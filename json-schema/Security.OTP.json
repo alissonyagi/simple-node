@@ -1,0 +1,40 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": ["issuer", "account"],
+	"additionalProperties": false,
+	"properties": {
+		"type": {
+			"type": "string",
+			"enum": ["hotp", "totp"]
+		},
+		"algorithm": {
+			"type": "string",
+			"enum": ["sha1", "sha256", "sha512"]
+		},
+		"issuer": {
+			"type": "string",
+			"pattern": "^[^:]+$"
+		},
+		"account": {
+			"type": "string",
+			"pattern": "^[^:]+$"
+		},
+		"digits": {
+			"type": "number",
+			"enum": [6, 8]
+		},
+		"counter": {
+			"type": "number",
+			"minimum": 0
+		},
+		"period": {
+			"type": "integer",
+			"minimum": 1
+		},
+		"secret": {
+			"type": "string",
+			"pattern": "^[A-Z2-7]+$"
+		}
+	}
+}
