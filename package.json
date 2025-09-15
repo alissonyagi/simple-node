@@ -1,5 +1,5 @@
 {
-  "name": "main",
+  "name": "simple-node",
   "version": "1.0.0",
   "description": "Simple and fast framework.",
   "main": "index.js",
