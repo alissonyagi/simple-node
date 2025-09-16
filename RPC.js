@@ -57,9 +57,11 @@ function readMessage (socket, cb) {
 }
 
 async function writeMessage (socket, buf) {
+	const total = buf.length
+
 	let offset = 0
 
-	while (chunks.length > 0) {
+	while (offset < total) {
 		const end = Math.min(offset + CHUNK_SIZE, buf.length)
 		const chunk = buf.slice(offset, end)
 		const written = socket.write(chunk)
