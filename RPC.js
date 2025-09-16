@@ -48,20 +48,22 @@ function readMessage (socket, cb) {
 				break
 
 			const complete = buf.slice(4, 4 + len)
-
-			buf.slice(4 + len)
+			buf = buf.slice(4 + len)
 
 			cb(complete)
 		}
 	})
 }
 
-async function writeMessage (socket, buf) {
-	const total = buf.length
+async function writeMessage (socket, input) {
+	const len = Buffer.alloc(4)
+	len.writeUInt32BE(input.length, 0)
+
+	const buf = Buffer.concat([len, input])
 
 	let offset = 0
 
-	while (offset < total) {
+	while (offset < buf.length) {
 		const end = Math.min(offset + CHUNK_SIZE, buf.length)
 		const chunk = buf.slice(offset, end)
 		const written = socket.write(chunk)
