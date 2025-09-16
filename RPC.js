@@ -290,7 +290,16 @@ class Client extends EventEmitter {
 			})
 		}
 
-		return control.open()
+		if (!self.reconnect)
+			return control.open()
+
+		return new Promise((resolve, reject) => {
+			control.open().then(client => {
+				resolve(client)
+			}).catch(err => {
+				setTimeout(() => resolve(self.connect.apply(self, args)), self.ping)
+			})
+		})
 	}
 }
 
