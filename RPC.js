@@ -2,6 +2,8 @@ const fs = require('node:fs')
 const net = require('node:net')
 const EventEmitter = require('node:events')
 
+const CHUNK_SIZE = 64 * 1024; // 64KB
+
 const protocol = {
 	encode: function (val) {
 		return Buffer.from(JSON.stringify(val))
@@ -33,6 +35,42 @@ const protocol = {
 	}
 }
 
+function readMessage (socket, cb) {
+	let buf = Buffer.alloc(0)
+
+	socket.on('data', chunk => {
+		buf = Buffer.concat([buf, chunk])
+
+		while (buf.length >= 4) {
+			const len = buf.readUInt32BE(0)
+
+			if (buf.length < 4 + len)
+				break
+
+			const complete = buf.slice(4, 4 + len)
+
+			buf.slice(4 + len)
+
+			cb(complete)
+		}
+	})
+}
+
+async function writeMessage (socket, buf) {
+	let offset = 0
+
+	while (chunks.length > 0) {
+		const end = Math.min(offset + CHUNK_SIZE, buf.length)
+		const chunk = buf.slice(offset, end)
+		const written = socket.write(chunk)
+
+		offset = end
+
+		if (!written)
+			await new Promise(resolve => socket.once('drain', resolve))
+	}
+}
+
 class Server {
 	methods
 	autoclear
@@ -59,7 +97,7 @@ class Server {
 
 		return new Promise((resolve, reject) => {
 			const server = net.createServer(socket => {
-				socket.on('data', data => {
+				readMessage(socket, data => {
 					let req
 
 					try {
@@ -82,13 +120,13 @@ class Server {
 						}
 
 						if (!(ret instanceof Promise))
-							return socket.write(protocol.response(req.id, true, ret))
+							return writeMessage(socket, protocol.response(req.id, true, ret))
 
-						ret.then(val => socket.write(protocol.response(req.id, true, val))).catch(err => { throw err })
+						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => { throw err })
 					}
 					catch (e) {
 						if (typeof req === 'object')
-							socket.write(protocol.response(req.id, false, self.expose ? e : null))
+							writeMessage(socket, protocol.response(req.id, false, self.expose ? e : null))
 					}
 				})
 			})
@@ -157,7 +195,7 @@ class Client extends EventEmitter {
 			const client = this.client
 
 			return new Promise((resolve, reject) => {
-				client.write(protocol.request(id, name, args))
+				writeMessage(client, protocol.request(id, name, args))
 
 				client.once('response-' + id, res => {
 					client.removeAllListeners('error-' + id)
@@ -206,7 +244,7 @@ class Client extends EventEmitter {
 
 			this.client = client
 
-			client.on('data', data => {
+			readMessage(client, data => {
 				let res
 
 				try {
