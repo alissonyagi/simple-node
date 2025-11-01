@@ -18,11 +18,11 @@ module.exports = class JSONSchema {
 		this.basePath = basePath
 	}
 
-	parse (name, schema) {
+	parse (label, schema) {
 		try {
 			let compiled = ajv.compile(schema)
 
-			compiled.name = name
+			compiled.label = label
 
 			Object.defineProperty(compiled, 'name', { value: 'JSONSchemaValidator' })
 
@@ -42,7 +42,7 @@ module.exports = class JSONSchema {
 
 					target.messages = target.errors.map(v => {
 						let params = Util.flat({ __params: v.params })
-						return new Message(null, target.name + '/' + v.schemaPath, null, { ...params, ...target.placeholders }, v)
+						return new Message(null, target.label + '/' + v.schemaPath, null, { ...params, ...target.placeholders }, v)
 					})
 
 					return target.messages
