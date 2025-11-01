@@ -18,14 +18,11 @@ module.exports = class JSONSchema {
 		this.basePath = basePath
 	}
 
-	load (filename) {
+	parse (name, schema) {
 		try {
-			let filepath = path.resolve(this.basePath, filename + '.json')
-
-			let schema = require(filepath)
 			let compiled = ajv.compile(schema)
 
-			compiled.filename = filename
+			compiled.name = name
 
 			Object.defineProperty(compiled, 'name', { value: 'JSONSchemaValidator' })
 
@@ -45,7 +42,7 @@ module.exports = class JSONSchema {
 
 					target.messages = target.errors.map(v => {
 						let params = Util.flat({ __params: v.params })
-						return new Message(null, target.filename + '/' + v.schemaPath, null, { ...params, ...target.placeholders }, v)
+						return new Message(null, target.name + '/' + v.schemaPath, null, { ...params, ...target.placeholders }, v)
 					})
 
 					return target.messages
@@ -55,5 +52,20 @@ module.exports = class JSONSchema {
 		catch (e) {
 			throw str.error('invalid-json-schema', null, { error: e })
 		}
+	}
+
+	load (filename) {
+		let schema
+
+		try {
+			let filepath = path.resolve(this.basePath, filename + '.json')
+
+			schema = require(filepath)
+		}
+		catch (e) {
+			throw str.error('invalid-json-file', null, { error: e })
+		}
+
+		return this.parse(filename, schema)
 	}
 }

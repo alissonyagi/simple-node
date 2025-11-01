@@ -134,37 +134,37 @@ module.exports = class DatabaseObject {
 		}
 	}
 
-	async insert (values = {}) {
+	insert (values = {}) {
 		let parsed = this._validate('create', values)
 
 		let cols = parsed.cols.join(',')
 		let vals = parsed.vals.join(',')
 
-		return await this._db.all(`INSERT INTO "${this._name}" (${cols}) VALUES (${vals}) RETURNING *`, parsed.params)
+		return this._db.all(`INSERT INTO "${this._name}" (${cols}) VALUES (${vals}) RETURNING *`, parsed.params)
 	}
 
-	async update (values = {}, filter = {}) {
+	update (values = {}, filter = {}) {
 		let parsed = this._validate('update', values)
 		let parsedFilter = this._filter('updatefilter', filter)
 
 		let updatePair = parsed.cols.map((v, k) => v + '=' + parsed.vals[k]).join(',')
 
-		return await this._db.all(`UPDATE "${this._name}" SET ${updatePair} WHERE ${parsedFilter.query} RETURNING *`, { ...parsed.params, ...parsedFilter.params })
+		return this._db.all(`UPDATE "${this._name}" SET ${updatePair} WHERE ${parsedFilter.query} RETURNING *`, { ...parsed.params, ...parsedFilter.params })
 	}
 
-	async delete (filter = {}) {
+	delete (filter = {}) {
 		let parsedFilter = this._filter('delete', filter)
 
-		return await this._db.all(`DELETE FROM "${this._name}" WHERE ${parsedFilter} RETURNING *`)
+		return this._db.all(`DELETE FROM "${this._name}" WHERE ${parsedFilter} RETURNING *`)
 	}
 
-	async select (filter = {}) {
+	select (filter = {}) {
 		let parsedFilter = this._filter('select', filter)
 
-		return await this._db.all(`SELECT * FROM "${this._name}" WHERE ${parsedFilter.query}`, parsedFilter.params)
+		return this._db.all(`SELECT * FROM "${this._name}" WHERE ${parsedFilter.query}`, parsedFilter.params)
 	}
 
-	async close () {
-		return await this._db.close()
+	close () {
+		return this._db.close()
 	}
 }
