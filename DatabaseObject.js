@@ -21,7 +21,7 @@ module.exports = class DatabaseObject {
 		if (typeof schemas !== 'object')
 			throw str.error('invalid-schema-list', null)
 
-		if (typeof db !== 'object || !(db instanceof Database) || db.constructor.name !== 'DatabaseTransaction')
+		if (typeof db !== 'object' || (!(db instanceof Database) && db.constructor.name !== 'DatabaseTransaction'))
 			throw str.error('invalid-database', null, { db: db })
 
 		this._db = db
