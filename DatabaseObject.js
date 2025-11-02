@@ -14,14 +14,17 @@ module.exports = class DatabaseObject {
 	_name
 	_schemas
 
-	constructor (name, schemas = {}, filename) {
+	constructor (name, schemas = {}, db) {
 		if (/[\'\"]/.test(name))
 			throw str.error('invalid-table-name', null, { name: name })
 
 		if (typeof schemas !== 'object')
 			throw str.error('invalid-schema-list', null)
 
-		this._db = filename instanceof Database ? filename : new Database(filename)
+		if (!(db instanceof Database) || !(db instanceof DatabaseTransaction))
+			throw str.error('invalid-database', null, { db: db })
+
+		this._db = db
 		this._name = name
 		this._schemas = {}
 
@@ -162,9 +165,5 @@ module.exports = class DatabaseObject {
 		let parsedFilter = this._filter('select', filter)
 
 		return this._db.all(`SELECT * FROM "${this._name}" WHERE ${parsedFilter.query}`, parsedFilter.params)
-	}
-
-	close () {
-		return this._db.close()
 	}
 }
