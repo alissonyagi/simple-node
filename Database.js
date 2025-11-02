@@ -142,7 +142,7 @@ class Database extends sqlite.DatabaseSync {
 			return { id: ret.lastInsertRowid, changes: ret.changes }
 		}
 		catch (e) {
-			throw str.error('run-failed', null, { error: err, sql: sql, args: args })
+			throw str.error('run-failed', null, { error: e, sql: sql, args: args })
 		}
 	}
 
@@ -151,7 +151,7 @@ class Database extends sqlite.DatabaseSync {
 			return super.prepare(sql).get(...args)
 		}
 		catch (e) {
-			throw str.error('get-failed', null, { error: err, sql: sql, args: args })
+			throw str.error('get-failed', null, { error: e, sql: sql, args: args })
 		}
 	}
 
@@ -160,7 +160,7 @@ class Database extends sqlite.DatabaseSync {
 			return super.prepare(sql).all(...args)
 		}
 		catch (e) {
-			throw str.error('get-all-failed', null, { error: err, sql: sql, args: args })
+			throw str.error('get-all-failed', null, { error: e, sql: sql, args: args })
 		}
 	}
 }
