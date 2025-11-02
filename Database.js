@@ -75,7 +75,7 @@ class DatabaseTransaction {
 	}
 }
 
-module.exports = class Database extends sqlite.DatabaseSync {
+class Database extends sqlite.DatabaseSync {
 	_filename
 	_opts
 
@@ -164,3 +164,5 @@ module.exports = class Database extends sqlite.DatabaseSync {
 		}
 	}
 }
+
+module.exports = Database
