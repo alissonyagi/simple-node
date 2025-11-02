@@ -158,7 +158,7 @@ module.exports = class DatabaseObject {
 	delete (filter = {}) {
 		let parsedFilter = this._filter('delete', filter)
 
-		return this._db.all(`DELETE FROM "${this._name}" WHERE ${parsedFilter} RETURNING *`)
+		return this._db.all(`DELETE FROM "${this._name}" WHERE ${parsedFilter.query} RETURNING *`, parsedFilter.params)
 	}
 
 	select (filter = {}) {
