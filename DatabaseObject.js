@@ -1,3 +1,4 @@
+const EventEmitter = require('node:events')
 const Database = require('./Database')
 const Strings = require('./Strings')
 const JSONSchema = require('./JSONSchema')
@@ -9,22 +10,20 @@ const schemas = {
 	filter: jsonSchema.load('DatabaseObject.filter')
 }
 
-module.exports = class DatabaseObject {
+module.exports = class DatabaseObject extends EventEmitter {
 	_db
 	_name
 	_schemas
 
-	constructor (name, schemas = {}, db) {
+	constructor (name, schemas = {}) {
 		if (/[\'\"]/.test(name))
 			throw str.error('invalid-table-name', null, { name: name })
 
 		if (typeof schemas !== 'object')
 			throw str.error('invalid-schema-list', null)
 
-		if (typeof db !== 'object' || (!(db instanceof Database) && db.constructor.name !== 'DatabaseTransaction'))
-			throw str.error('invalid-database', null, { db: db })
+		super()
 
-		this._db = db
 		this._name = name
 		this._schemas = {}
 
@@ -36,10 +35,24 @@ module.exports = class DatabaseObject {
 		}
 	}
 
-	_validate (name, values, varName = 'c') {
-		if (this._schemas?.[name] && !this._schemas[name](values))
-			throw str.error('validation-failed', null, { error: this._schemas[name].errors })
+	use (db) {
+		if (typeof db !== 'object' || (!(db instanceof Database) && db.constructor.name !== 'DatabaseTransaction' && !(db instanceof DatabaseObject))
+			throw str.error('invalid-database', null, { db })
 
+		if (db instanceof Databaseobject)
+			db = db._db
+
+		return new Proxy(this, {
+			get: (target, prop) => (prop === '_db' ? db : target[prop])
+		})
+	}
+
+	_validate (name, data) {
+		if (this._schemas?.[name] && !this._schemas[name](data))
+			throw str.error('validation-failed', null, { error: this._schemas[name].errors })
+	}
+
+	_params (values, varName = 'c') {
 		let params = {}
 		let keys = Object.keys(values)
 		let cols = keys.map(v => '"' + v + '"')
@@ -52,20 +65,23 @@ module.exports = class DatabaseObject {
 		return { params, keys, cols, vals }
 	}
 
-	_filter (name, filter = {}) {
+	_run (sql, params) {
+		str.trace('sql', null, { sql, params })
+
+		return this._db.all(sql, params)
+	}
+
+	_filter (filter = {}) {
 		if (filter instanceof Array)
 			filter = { dummy: filter }
 
 		if (!schemas.filter(filter))
 			throw str.error('invalid-filter', null, { error: schemas.filter.errors })
 
-		if (this._schemas?.[name] && !this._schemas[name](filter))
-			throw str.error('validation-failed', null, { error: this._schemas[name].errors })
-
 		let params = {}
 		let query = this._parseFilter(filter, null, params)
 
-		return { query: query, params: params }
+		return { query, params }
 	}
 
 	_parseFilter (cur, name = null, list = {}) {
@@ -138,32 +154,100 @@ module.exports = class DatabaseObject {
 	}
 
 	insert (values = {}) {
-		let parsed = this._validate('create', values)
+		if (!this._db)
+			throw str.error('database-not-connected')
+
+		this._validate('insert', { values })
+
+		this.emit('before-insert', values)
+
+		let parsed = this._params(values)
 
 		let cols = parsed.cols.join(',')
 		let vals = parsed.vals.join(',')
 
-		return this._db.all(`INSERT INTO "${this._name}" (${cols}) VALUES (${vals}) RETURNING *`, parsed.params)
+		let ret = this._run(`INSERT INTO "${this._name}" (${cols}) VALUES (${vals}) RETURNING *`, parsed.params)
+
+		this.emit('after-insert', ret)
+
+		return ret
 	}
 
 	update (values = {}, filter = {}) {
-		let parsed = this._validate('update', values)
-		let parsedFilter = this._filter('updatefilter', filter)
+		if (!this._db)
+			throw str.error('database-not-connected')
+
+		this._validate('update', { values, filter })
+
+		this.emit('before-update', values, filter)
+
+		let parsed = this._params(values)
+		let parsedFilter = this._filter(filter)
 
 		let updatePair = parsed.cols.map((v, k) => v + '=' + parsed.vals[k]).join(',')
 
-		return this._db.all(`UPDATE "${this._name}" SET ${updatePair} WHERE ${parsedFilter.query} RETURNING *`, { ...parsed.params, ...parsedFilter.params })
+		let ret = this._run(`UPDATE "${this._name}" SET ${updatePair} WHERE ${parsedFilter.query} RETURNING *`, { ...parsed.params, ...parsedFilter.params })
+
+		this.emit('after-update', ret)
+
+		return ret
 	}
 
 	delete (filter = {}) {
-		let parsedFilter = this._filter('delete', filter)
+		if (!this._db)
+			throw str.error('database-not-connected')
 
-		return this._db.all(`DELETE FROM "${this._name}" WHERE ${parsedFilter.query} RETURNING *`, parsedFilter.params)
+		this._validate('delete', { filter })
+
+		this.emit('before-delete', filter)
+
+		let parsedFilter = this._filter(filter)
+
+		let ret = this._run(`DELETE FROM "${this._name}" WHERE ${parsedFilter.query} RETURNING *`, parsedFilter.params)
+
+		this.emit('after-delete', ret)
+
+		return ret
 	}
 
-	select (filter = {}) {
-		let parsedFilter = this._filter('select', filter)
+	select (filter = {}, order = {}, limit = {}) {
+		if (!this._db)
+			throw str.error('database-not-connected')
 
-		return this._db.all(`SELECT * FROM "${this._name}" WHERE ${parsedFilter.query}`, parsedFilter.params)
+		this._validate('select', { filter })
+
+		this.emit('before-select', filter)
+
+		let parsedFilter = this._filter(filter)
+
+		let additional = []
+
+		if (typeof order === 'object') {
+			let keys = Object.keys(order)
+
+			if (keys.length > 0)
+				additional.push('ORDER BY ' + keys.map(v => '"' + v + '" ' + order[v]).join(','))
+		}
+
+		if (typeof limit === 'object') {
+			if (typeof limit.count === 'undefined')
+				limit.count = 100
+
+			if (typeof limit.offset === 'undefined')
+				limit.offset = 0
+
+			if (limit.page)
+				limit.offset = limit.count * (limit.page - 1)
+
+			additional.push(`LIMIT ${limit.count} OFFSET ${limit.offset}`)
+		}
+
+		let additionalQuery = additional.length > 0 ? ' ' + additional.join(' ') : ''
+
+		let ret = this._run(`SELECT * FROM "${this._name}" WHERE ${parsedFilter.query}${additionalQuery}`, parsedFilter.params)
+
+		this.emit('after-select', ret)
+
+		return ret
 	}
 }

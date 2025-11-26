@@ -19,13 +19,14 @@ class DatabaseTransaction {
 		if (isNaN(timeout) || parseInt(timeout) <= 0)
 			throw str.error('invalid-transaction-timeout', null, { timeout: timeout })
 
-		this._db = new Database(db._filename, db._opts)
+		this._db = db
 
 		if (!this._db.isOpen)
 			this._db.open()
 
 		this._timeout = setTimeout(function () {
 			this.rollback()
+
 			throw str.error('transaction-timeout')
 		}.bind(this), timeout)
 
@@ -62,6 +63,10 @@ class DatabaseTransaction {
 		}
 	}
 
+	param (...args) {
+		return this._db.param(...args)
+	}
+
 	run (...args) {
 		return this._db.run(...args)
 	}
@@ -78,6 +83,8 @@ class DatabaseTransaction {
 class Database extends sqlite.DatabaseSync {
 	_filename
 	_opts
+	_addons = []
+	_params = {}
 
 	constructor (filename = defaultDatabase, opts = {}) {
 		try {
@@ -95,6 +102,53 @@ class Database extends sqlite.DatabaseSync {
 
 		if (this.isOpen)
 			this.setup()
+	}
+
+	pragma (val) {
+		super.exec('PRAGMA ' + val)
+		this._addons.push({ type: 'pragma', args: [val] })
+	}
+
+	setAuthorizer (...args) {
+		super.setAuthorizer(...args)
+		this._addons.push({ type: 'setAuthorizer', args: args })
+	}
+
+	aggregate (...args) {
+		super.aggregate(...args)
+		this._addons.push({ type: 'aggregate', args: args })
+	}
+
+	loadExtension (...args) {
+		super.loadExtension(...args)
+		this._addons.push({ type: 'loadExtension', args: args })
+	}
+
+	function (...args) {
+		super.function(...args)
+		this._addons.push({ type: 'function', args: args })
+	}
+
+	param (name, value) {
+		let lower = name.toLowerCase()
+
+		if (typeof value !== 'undefined')
+			this._params[lower] = value
+
+		return this._params[lower]
+	}
+
+	clone () {
+		const cloned = new Database(this._filename, this._opts)
+
+		this._addons.forEach(v => {
+			if (typeof cloned[v.type] !== 'function')
+				return
+
+			cloned[v.type].apply(cloned, v.args)
+		})
+
+		return cloned
 	}
 
 	open () {
@@ -119,16 +173,32 @@ class Database extends sqlite.DatabaseSync {
 
 	setup () {
 		try {
-			this.exec('PRAGMA foreign_keys=ON')
+			super.exec('PRAGMA foreign_keys=ON')
+
+			const params = this._params
+
+			super.function('param', { varargs: true }, (name, value) => {
+				try {
+					let lower = name.toLowerCase()
+
+					if (typeof value !== 'undefined')
+						params[lower] = value
+		
+					return params[lower]
+				}
+				catch (e) {
+					return null
+				}
+			})
 		}
 		catch (e) {
 			throw str.error('foreign-key-mode-failed', null, { error: e })
 		}
 	}
 
-	begin (timeout = 500) {
+	begin (timeout = 1000) {
 		try {
-			return new DatabaseTransaction(this, timeout)
+			return new DatabaseTransaction(this.clone(), timeout)
 		}
 		catch (e) {
 			throw str.error('begin-transaction-failed', null, { error: e })

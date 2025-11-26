@@ -1,6 +1,6 @@
 {
   "name": "simple-node",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Simple and fast framework.",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,6 @@
     "patch-package": "^8.0.0",
     "postinstall-postinstall": "^2.1.0",
     "puppeteer": "^24.20.0",
-    "sqlite3": "^5.1.7",
     "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js"
   },
   "overrides": {
