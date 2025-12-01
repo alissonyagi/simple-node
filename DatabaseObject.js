@@ -39,7 +39,7 @@ module.exports = class DatabaseObject extends EventEmitter {
 		if (typeof db !== 'object' || (!(db instanceof Database) && db.constructor.name !== 'DatabaseTransaction' && !(db instanceof DatabaseObject))
 			throw str.error('invalid-database', null, { db })
 
-		if (db instanceof Databaseobject)
+		if (db instanceof DatabaseObject)
 			db = db._db
 
 		return new Proxy(this, {
