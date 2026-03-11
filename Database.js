@@ -63,10 +63,6 @@ class DatabaseTransaction {
 		}
 	}
 
-	param (...args) {
-		return this._db.param(...args)
-	}
-
 	run (...args) {
 		return this._db.run(...args)
 	}
@@ -84,7 +80,6 @@ class Database extends sqlite.DatabaseSync {
 	_filename
 	_opts
 	_addons = []
-	_params = {}
 
 	constructor (filename = defaultDatabase, opts = {}) {
 		try {
@@ -125,17 +120,14 @@ class Database extends sqlite.DatabaseSync {
 	}
 
 	function (...args) {
-		super.function(...args)
+		let original = args.pop()
+		let bound = original.bind(this)
+
+		super.function(...args, bound)
+
+		args.push(original)
+
 		this._addons.push({ type: 'function', args: args })
-	}
-
-	param (name, value) {
-		let lower = name.toLowerCase()
-
-		if (typeof value !== 'undefined')
-			this._params[lower] = value
-
-		return this._params[lower]
 	}
 
 	clone () {
@@ -175,7 +167,7 @@ class Database extends sqlite.DatabaseSync {
 		try {
 			super.exec('PRAGMA foreign_keys=ON')
 
-			const params = this._params
+			/*const params = this._params
 
 			super.function('param', { varargs: true }, (name, value) => {
 				try {
@@ -189,7 +181,7 @@ class Database extends sqlite.DatabaseSync {
 				catch (e) {
 					return null
 				}
-			})
+			})*/
 		}
 		catch (e) {
 			throw str.error('foreign-key-mode-failed', null, { error: e })

@@ -1,4 +1,4 @@
-const EventEmitter = require('node:events')
+const AsyncEventEmitter = require('./AsyncEventEmitter')
 const Database = require('./Database')
 const Strings = require('./Strings')
 const JSONSchema = require('./JSONSchema')
@@ -10,7 +10,7 @@ const schemas = {
 	filter: jsonSchema.load('DatabaseObject.filter')
 }
 
-module.exports = class DatabaseObject extends EventEmitter {
+module.exports = class DatabaseObject extends AsyncEventEmitter {
 	_db
 	_name
 	_schemas
@@ -36,10 +36,10 @@ module.exports = class DatabaseObject extends EventEmitter {
 	}
 
 	use (db) {
-		if (typeof db !== 'object' || (!(db instanceof Database) && db.constructor.name !== 'DatabaseTransaction' && !(db instanceof DatabaseObject))
+		if (typeof db !== 'object' || (!(db instanceof Database) && db.constructor.name !== 'DatabaseTransaction' && !(db instanceof DatabaseObject)))
 			throw str.error('invalid-database', null, { db })
 
-		if (db instanceof DatabaseObject)
+		if (db instanceof DatabaseObject || db.constructor.name === 'DatabaseTransaction')
 			db = db._db
 
 		return new Proxy(this, {
@@ -131,9 +131,10 @@ module.exports = class DatabaseObject extends EventEmitter {
 		}
 
 		switch (parts[0]) {
+			case 'like':
+				return col + ' LIKE ' + params[0]
 			case 'between':
 				return col + ' BETWEEN ' + params[0] + ' AND ' + params[1]
-				break
 			case 'in':
 				return col + ' IN (' + params.join(', ') + ')'
 			case '<':
@@ -153,13 +154,13 @@ module.exports = class DatabaseObject extends EventEmitter {
 		}
 	}
 
-	insert (values = {}) {
+	async insert (values = {}) {
 		if (!this._db)
 			throw str.error('database-not-connected')
 
 		this._validate('insert', { values })
 
-		this.emit('before-insert', values)
+		await this.emit('before-insert', values)
 
 		let parsed = this._params(values)
 
@@ -168,18 +169,18 @@ module.exports = class DatabaseObject extends EventEmitter {
 
 		let ret = this._run(`INSERT INTO "${this._name}" (${cols}) VALUES (${vals}) RETURNING *`, parsed.params)
 
-		this.emit('after-insert', ret)
+		await this.emit('after-insert', ret, values)
 
 		return ret
 	}
 
-	update (values = {}, filter = {}) {
+	async update (values = {}, filter = {}) {
 		if (!this._db)
 			throw str.error('database-not-connected')
 
 		this._validate('update', { values, filter })
 
-		this.emit('before-update', values, filter)
+		await this.emit('before-update', values, filter)
 
 		let parsed = this._params(values)
 		let parsedFilter = this._filter(filter)
@@ -188,35 +189,35 @@ module.exports = class DatabaseObject extends EventEmitter {
 
 		let ret = this._run(`UPDATE "${this._name}" SET ${updatePair} WHERE ${parsedFilter.query} RETURNING *`, { ...parsed.params, ...parsedFilter.params })
 
-		this.emit('after-update', ret)
+		await this.emit('after-update', ret, values, filter)
 
 		return ret
 	}
 
-	delete (filter = {}) {
+	async delete (filter = {}) {
 		if (!this._db)
 			throw str.error('database-not-connected')
 
 		this._validate('delete', { filter })
 
-		this.emit('before-delete', filter)
+		await this.emit('before-delete', filter)
 
 		let parsedFilter = this._filter(filter)
 
 		let ret = this._run(`DELETE FROM "${this._name}" WHERE ${parsedFilter.query} RETURNING *`, parsedFilter.params)
 
-		this.emit('after-delete', ret)
+		await this.emit('after-delete', ret, filter)
 
 		return ret
 	}
 
-	select (filter = {}, order = {}, limit = {}) {
+	async select (filter = {}, order = {}, limit = {}) {
 		if (!this._db)
 			throw str.error('database-not-connected')
 
 		this._validate('select', { filter })
 
-		this.emit('before-select', filter)
+		await this.emit('before-select', filter)
 
 		let parsedFilter = this._filter(filter)
 
@@ -246,7 +247,7 @@ module.exports = class DatabaseObject extends EventEmitter {
 
 		let ret = this._run(`SELECT * FROM "${this._name}" WHERE ${parsedFilter.query}${additionalQuery}`, parsedFilter.params)
 
-		this.emit('after-select', ret)
+		await this.emit('after-select', ret, filter, order, limit)
 
 		return ret
 	}
