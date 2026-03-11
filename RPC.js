@@ -80,7 +80,7 @@ class Server {
 	autoclear
 	expose
 
-	constructor (methods, opts) {
+	constructor (methods, opts, handshakeHandler) {
 		if (typeof methods !== 'object')
 			throw new Error('invalid-methods')
 
@@ -91,9 +91,13 @@ class Server {
 		if (typeof opts !== 'object')
 			opts = {}
 
+		if (typeof handshakeHandler !== 'function')
+			handshakeHandler = () => true
+
 		this.autoclear = opts.autoclear || true
 		this.expose = opts.expose || false
 		this.methods = methods
+		this.handshakeHandler = handshakeHandler
 	}
 
 	listen (...args) {
@@ -114,11 +118,26 @@ class Server {
 								ret = true
 								break
 							case '__methods':
-								ret = Object.keys(self.methods)
+								ret = new Promise(async (resolve, reject) => {
+									try {
+										let handshakeRet = await self.handshakeHandler(req.args[0])
+
+										if (handshakeRet === false)
+											return reject(false)
+
+										socket.handshake = req.args[0]
+										resolve(Object.keys(self.methods))
+									}
+									catch (e) {
+										reject(e)
+									}
+								})
 								break
 							default:
 								if (!self.methods[req.name])
 									throw 'invalid-method'
+
+								server.emit('rpc', socket.handshake, req.name, req.args)
 
 								ret = self.methods[req.name](...req.args)
 						}
@@ -126,7 +145,7 @@ class Server {
 						if (!(ret instanceof Promise))
 							return writeMessage(socket, protocol.response(req.id, true, ret))
 
-						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => { throw err })
+						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => server.emit('error', err))
 					}
 					catch (e) {
 						if (typeof req === 'object')
@@ -167,138 +186,147 @@ class Server {
 	}
 }
 
-class Client extends EventEmitter {
-	timeout
-	ping
-	reconnect
+class Client extends net.Socket {
+	opts
+	remote
+	args
+	timer
+	counter
 
-	constructor (opts) {
-		super()
+	constructor (opts, handshake = {}) {
+		super(opts)
 
-		if (typeof opts !== 'object')
-			opts = {}
+		this.opts = {
+			timeout: Math.max(opts.timeout || 10_000, 100),
+			ping: Math.max(opts.ping || 10_000, 5_000),
+			reconnect: opts.reconnect || false
+		}
 
-		this.timeout = Math.max(opts.timeout || 10_000, 100)
-		this.ping = Math.max(opts.ping || 10_000, 5_000)
-		this.reconnect = opts.reconnect || false
+		this.handshake = handshake
+		this.remote = {}
+		this.timer = {}
+		this.counter = 0
 
 		this.on('error', () => {}) // prevents throwing
-	}
 
-	connect (...args) {
 		const self = this
 
-		const control = {
-			args: args,
-			client: false,
-			methods: {}
-		}
-
-		control.request = function (name, args = []) {
-			const id = Date.now()
-			const client = this.client
-
-			return new Promise((resolve, reject) => {
-				writeMessage(client, protocol.request(id, name, args))
-
-				client.once('response-' + id, res => {
-					client.removeAllListeners('error-' + id)
-					client.removeAllListeners('timeout-' + id)
-					resolve(res)
-				})
-
-				client.once('error-' + id, err => {
-					client.removeAllListeners('response-' + id)
-					client.removeAllListeners('timeout-' + id)
-					reject(err)
-				})
-
-				client.once('timeout-' + id, () => {
-					client.removeAllListeners('response-' + id)
-					client.removeAllListeners('error-' + id)
-					reject('timeout')
-				})
-
-				setTimeout(() => {
-					client.emit('timeout-' + id)
-				}, self.timeout)
-			})
-		}
-
-		control.ping = function () {
-			control.request('__ping').then(() => setTimeout(control.ping, self.ping)).catch(err => {
-				if (self.reconnect)
-					control.open().then(() => {}).catch(() => setTimeout(control.ping, self.ping))
-			})
-		}
-
-		control.open = function () {
+		this.on('close', () => {
 			try {
-				this.client.end()
+				clearTimeout(self.timer.ping)
 			}
 			catch (e) {}
 
-			const client = net.createConnection(...(this.args))
-
-			client._emit = client.emit
-			client.emit = function (...args) {
-				self.emit(...args)
-				this._emit(...args)
+			if (self.opts.reconnect) {
+				self.timer.reconnect = setTimeout(() => {
+					self.emit('reconnecting')
+					self.connect(...self.args)
+				}, self.opts.ping)
 			}
+		})
 
-			this.client = client
+		readMessage(this, data => {
+			let res
 
-			readMessage(client, data => {
-				let res
+			try {
+				res = protocol.parseResponse(data)
 
-				try {
-					res = protocol.parseResponse(data)
+				self.emit((res.success ? 'response' : 'error') + '-' + res.id, res.data)
+			}
+			catch (e) {
+				if (typeof res === 'object')
+					self.emit('error-' + res.id, e)
+			}
+		})
 
-					client.emit((res.success ? 'response' : 'error') + '-' + res.id, res.data)
-				}
-				catch (e) {
-					if (typeof res === 'object')
-						client.emit('error-' + res.id, e)
-				}
+		this.on('connect', () => {
+			self.request('__methods', [self.handshake]).then(list => {
+				for (let n in self.remote)
+					delete self.remote[n]
+
+				if (typeof list !== 'object' || !(list instanceof Array))
+					return self.emit('error', new Error('invalid-method-list'))
+
+				for (let i = 0; i < list.length; i++)
+					self.remote[list[i]] = (...args) => self.request(list[i], args)
+
+				self.emit('ready', true)
+
+				if (self.opts.ping > 0)
+					self.ping()
+			}).catch(e => {
+				self.emit('error', e)
+				self.end()
 			})
+		})
+	}
 
-			return new Promise((resolve, reject) => {
-				client.on('error', err => {
-					reject(err)
-				})
+	emit (name, ...args) {
+		if (name === 'ready' && args[0] !== true)
+			return
 
-				client.on('ready', () => {
-					control.request('__methods').then(list => {
-						for (let n in control.methods)
-							delete control.methods[n]
+		super.emit(name, ...args)
 
-						if (typeof list !== 'object' || !(list instanceof Array))
-							return reject('invalid-method-list-received')
+		if (name !== 'any')
+			this.emit('any', name, ...args)
+	}
 
-						for (let i = 0; i < list.length; i++)
-							control.methods[list[i]] = (...args) => control.request(list[i], args)
+	connect (...args) {
+		this.args = args
+		super.connect(...args)
+	}
 
-						if (self.ping > 0)
-							setTimeout(control.ping, self.ping)
+	close (force = false) {
+		this.opts.reconnect = false
 
-						resolve(control.methods)
-					}).catch(e => {
-						client.end()
-						reject(e)
-					})
-				})
-			})
-		}
+		if (force === true)
+			this.destroy()
+		else
+			this.end()
+	}
 
-		if (!self.reconnect)
-			return control.open()
+	request (name, args = []) {
+		const id = ++this.counter % 1_000_000
+		const self = this
 
 		return new Promise((resolve, reject) => {
-			control.open().then(client => {
-				resolve(client)
-			}).catch(err => {
-				setTimeout(() => resolve(self.connect.apply(self, args)), self.ping)
+			writeMessage(self, protocol.request(id, name, args))
+
+			self.once('response-' + id, res => {
+				self.removeAllListeners('error-' + id)
+				self.removeAllListeners('timeout-' + id)
+
+				clearTimeout(self.timer['request-' + id])
+
+				resolve(res)
 			})
+
+			self.once('error-' + id, err => {
+				self.removeAllListeners('response-' + id)
+				self.removeAllListeners('timeout-' + id)
+
+				clearTimeout(self.timer['request-' + id])
+
+				reject(err)
+			})
+
+			self.once('timeout-' + id, () => {
+				self.removeAllListeners('response-' + id)
+				self.removeAllListeners('error-' + id)
+				reject('timeout')
+			})
+
+			self.timer['request-' + id] = setTimeout(() => self.emit('timeout-' + id), self.opts.timeout)
+		})
+	}
+
+	ping () {
+		this.request('__ping').then(() => {
+			this.emit('ping')
+
+			this.timer.ping = setTimeout(this.ping.bind(this), this.opts.ping)
+		}).catch(err => {
+			this.emit('pingFailed', err)
 		})
 	}
 }
