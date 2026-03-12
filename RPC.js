@@ -105,6 +105,10 @@ class Server {
 
 		return new Promise((resolve, reject) => {
 			const server = net.createServer(socket => {
+				socket.on('error', err => {
+					server.emit('socketError', err, socket.handshake)
+				})
+
 				readMessage(socket, data => {
 					let req
 
