@@ -198,6 +198,9 @@ class Client extends net.Socket {
 	counter
 
 	constructor (opts, handshake = {}) {
+		if (typeof opts !== 'object')
+			opts = {}
+
 		super(opts)
 
 		this.opts = {
