@@ -48,10 +48,10 @@ try {
 	if (missing.length === 0)
 		return console.log('No missing strings found.')
 
-	/*if (stringsFile)
+	if (stringsFile)
 		fs.copyFileSync(stringsFile, stringsFile + '.' + Date.now() + '.old')
 
-	fs.writeFileSync(stringsFile, JSON.stringify(list, null, "\t"))*/
+	fs.writeFileSync(stringsFile, JSON.stringify(list, null, "\t"))
 
 	console.log('Updated missing strings:')
 	console.log(util.inspect(missing, { maxArrayLength: null }))
