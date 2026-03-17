@@ -20,7 +20,7 @@ catch (e) {}
 const list = stringsFile ? require(stringsFile) : {}
 
 try {
-	let rows = execSync('grep -RI --exclude-dir=node_modules -E "(str|translate)\\..+\\(" "' + project + '/"*', { encoding: 'utf8' }).split("\n")
+	let rows = execSync('grep -RI --exclude-dir=node_modules --include="*.js" -E "(str|translate)\\..+\\(" "' + project + '/"*', { encoding: 'utf8' }).split("\n")
 	let missing = []
 
 	for (let i = 0; i < rows.length; i++) {
