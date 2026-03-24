@@ -9,15 +9,17 @@ const project = path.resolve(cwd(), process.argv[3] || '.')
 
 console.log('Project:', path.basename(project))
 
-let stringsFile = false
+const stringsFile = path.resolve(project, 'strings', lang)
+
+let list
 
 try {
-	stringsFile = require.resolve(path.resolve(project, 'strings', lang))
+	list = require(stringsFile)
 	console.log('Strings found:', path.relative(project, stringsFile))
 }
-catch (e) {}
-
-const list = stringsFile ? require(stringsFile) : {}
+catch (e) {
+	list = {}
+}
 
 try {
 	let rows = execSync('grep -RI --exclude-dir=node_modules --include="*.js" -E "(str|translate)\\..+\\(" "' + project + '/"*', { encoding: 'utf8' }).split("\n")
@@ -48,7 +50,7 @@ try {
 	if (missing.length === 0)
 		return console.log('No missing strings found.')
 
-	if (stringsFile)
+	if (fs.existsSync(stringsFile))
 		fs.copyFileSync(stringsFile, stringsFile + '.' + Date.now() + '.old')
 
 	fs.writeFileSync(stringsFile, JSON.stringify(list, null, "\t"))
