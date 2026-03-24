@@ -9,15 +9,17 @@ const project = path.resolve(cwd(), process.argv[3] || '.')
 
 console.log('Project:', path.basename(project))
 
-const stringsFile = path.resolve(project, 'strings', lang)
-
+let stringsFile = path.resolve(project, 'strings', lang)
 let list
 
 try {
+	stringsFile = require.resolve(stringsFile)
 	list = require(stringsFile)
+
 	console.log('Strings found:', path.relative(project, stringsFile))
 }
 catch (e) {
+	stringsFile += '.json'
 	list = {}
 }
 
