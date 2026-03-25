@@ -119,11 +119,11 @@ module.exports = class Strings {
 		return msg
 	}
 
-	roll (msg) {
+	trap (msg) {
 		if (msg instanceof Message)
-			return new Proxy(this, {
+			return new Proxy({}, {
 				get (target, prop, receiver) {
-					return msg
+					return () => msg
 				}
 			})
 
