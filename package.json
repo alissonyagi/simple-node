@@ -1,6 +1,6 @@
 {
   "name": "simple-node",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Simple and fast framework.",
   "main": "index.js",
   "scripts": {

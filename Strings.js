@@ -118,6 +118,17 @@ module.exports = class Strings {
 
 		return msg
 	}
+
+	roll (msg) {
+		if (msg instanceof Message)
+			return new Proxy(this, {
+				get (target, prop, receiver) {
+					return msg
+				}
+			})
+
+		return this
+	}
 }
 
 // Implements all Logger levels inside class Strings
