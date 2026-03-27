@@ -54,15 +54,16 @@ module.exports = class WhatsApp {
 			await self.client.sendPresenceAvailable()
 
 			setTimeout(async () => {
-				await this.client.sendPresenceUnavailable()
+				await self.client.sendPresenceUnavailable()
 			}, (Math.floor(Math.random() * 100) % 60) * 1000)
 
 			setTimeout(async () => {
-				await this.ping.apply(this)
+				await self.ping.apply(self)
 			}, (Math.floor(Math.random() * 100) % 30) * 60 * 1000)
 		}
 		catch (e) {
-			throw str.error('ping-failed', null, { error: e })
+			str.error('ping-failed', null, { error: e })
+			this.client.emit('ping_error', e)
 		}
 	}
 
