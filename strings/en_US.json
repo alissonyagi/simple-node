@@ -1,2 +1,105 @@
 {
+	"Cron": {
+		"uncaught-exception": "",
+		"crontab-not-found": "",
+		"running": "",
+		"command-error": "",
+		"command-stdout": "",
+		"command-stderr": ""
+	},
+	"Database": {
+		"invalid-transaction-database": "",
+		"invalid-transaction-timeout": "",
+		"transaction-timeout": "",
+		"commit-failed": "",
+		"rollback-failed": "",
+		"load-failed": "",
+		"open-failed": "",
+		"close-failed": "",
+		"foreign-key-mode-failed": "",
+		"begin-transaction-failed": "",
+		"run-failed": "",
+		"get-failed": "",
+		"get-all-failed": ""
+	},
+	"DatabaseObject": {
+		"invalid-table-name": "",
+		"invalid-schema-list": "",
+		"invalid-schema-validator": "",
+		"invalid-database": "",
+		"validation-failed": "",
+		"sql": "",
+		"invalid-filter": "",
+		"database-not-connected": ""
+	},
+	"JSONSchema": {
+		"invalid-json-schema": "",
+		"invalid-json-file": ""
+	},
+	"Lock": {
+		"file-locked": ""
+	},
+	"Router": {
+		"uncaught-error": "",
+		"invalid-response": ""
+	},
+	"Security": {
+		"no-keys-specified": "",
+		"signing-failed": "",
+		"verification-failed": "",
+		"otp-invalid-uri": "",
+		"otp-invalid-protocol": "",
+		"otp-invalid-option": "",
+		"otp-invalid-token": "",
+		"otp-invalid-step": ""
+	},
+	"Telegram": {
+		"invalid-client-id": "",
+		"event-": ""
+	},
+	"TimeSlot": {
+		"invalid-priority": "",
+		"invalid-timeslot-object": ""
+	},
+	"Util": {
+		"https-request-sent": "",
+		"no-reponse": "",
+		"https-response-received": "",
+		"request-timeout": "",
+		"request-closed": "",
+		"unsupported-merge": ""
+	},
+	"WhatsApp": {
+		"invalid-client-id": "",
+		"event-": "",
+		"ping-failed": "",
+		"init-failed": ""
+	},
+	"bkp/Database": {
+		"close-failed": "",
+		"run-failed": "",
+		"get-failed": "",
+		"get-all-failed": "",
+		"load-failed": "",
+		"journal-mode-failed": "",
+		"foreign-key-mode-failed": "",
+		"begin-transaction-failed": "",
+		"commit-failed": "",
+		"rollback-failed": "",
+		"prepare-failed": ""
+	},
+	"bkp/DatabaseView": {
+		"invalid-file-path": "",
+		"invalid-sql-file": "",
+		"database-not-connected": ""
+	},
+	"pwa": {
+		"hash-failed": "",
+		"invalid-express-object": "",
+		"cache-list-failed": "",
+		"loading-hashes": "",
+		"cache-item-inactivated": "",
+		"cache-item-removed": "",
+		"cache-item-activated": ""
+	}
 }

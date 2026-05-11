@@ -18,7 +18,7 @@
     "node-telegram-bot-api": "^0.66.0",
     "patch-package": "^8.0.0",
     "postinstall-postinstall": "^2.1.0",
-    "puppeteer": "^24.20.0",
+    "puppeteer": "^24.43.1",
     "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js"
   },
   "overrides": {
