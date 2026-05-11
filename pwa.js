@@ -72,11 +72,11 @@ module.exports = async function (app, opts = {}) {
 			let ref = null
 
 			if (req.query.hash && /^[a-f0-9]{40}$/.test(req.query.hash)) {
-				let last = await db.get('SELECT ID_FILE_CACHE FROM PWA_FILE_CACHE WHERE TX_FILE = "." AND TX_HASH = $hash ORDER BY DT_CREATION', { $hash: req.query.hash })
+				let last = await db.get("SELECT ID_FILE_CACHE FROM PWA_FILE_CACHE WHERE TX_FILE = '.' AND TX_HASH = $hash ORDER BY DT_CREATION", { $hash: req.query.hash })
 				ref = last?.ID_FILE_CACHE || null
 			}
 
-			let list = await db.all('SELECT TX_FILE, TX_HASH, VR_STATUS FROM PWA_FILE_CACHE WHERE ($ref IS NULL AND VR_STATUS = "active") OR (VR_STATUS IN ("active", "removed") AND ID_FILE_CACHE > $ref)', { $ref: ref })
+			let list = await db.all("SELECT TX_FILE, TX_HASH, VR_STATUS FROM PWA_FILE_CACHE WHERE ($ref IS NULL AND VR_STATUS = 'active') OR (VR_STATUS IN ('active', 'removed') AND ID_FILE_CACHE > $ref)", { $ref: ref })
 
 			let ret = []
 
@@ -105,7 +105,7 @@ module.exports = async function (app, opts = {}) {
 
 	await db.begin()
 
-	let old = await db.all('SELECT ID_FILE_CACHE, TX_FILE, TX_HASH FROM PWA_FILE_CACHE WHERE VR_STATUS = "active" ORDER BY DT_CREATION')
+	let old = await db.all("SELECT ID_FILE_CACHE, TX_FILE, TX_HASH FROM PWA_FILE_CACHE WHERE VR_STATUS = 'active' ORDER BY DT_CREATION")
 	let oldCache = {}
 
 	for (let i = 0; i < old.length; i++)
