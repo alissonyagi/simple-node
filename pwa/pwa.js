@@ -1,45 +1,42 @@
-window.addEventListener('load', function () {
-	if (location.pathname !== '/' && sessionStorage.getItem('__pwaLoaded') === 'true')
-		return
+window.sw = function () {}
 
-	if ('serviceWorker' in navigator) {
-		navigator.serviceWorker.addEventListener('message', function (e) {
-			var type = typeof e.data !== 'undefined' ? e.data.type : null
-			var progressEvent = new Event('progress')
+if ('serviceWorker' in navigator) {
+	navigator.serviceWorker.addEventListener('message', function (e) {
+		if (!e.data || typeof e.data.type !== 'string')
+			return
 
-			switch (type) {
-				case 'progress':
-					progressEvent.data = e.data.data
-					window.dispatchEvent(progressEvent)
-					break
-				case 'reload':
-					if (sessionStorage.getItem('__pwaReload') === 'true')
-						break
-					sessionStorage.setItem('__pwaReload', 'true')
-					window.location.reload()
-					break
-				case 'loaded':
-					sessionStorage.setItem('__pwaLoaded', 'true')
-					progressEvent.data = { current: 1, total: 1, name: 'pwa.js' }
-					window.dispatchEvent(progressEvent)
-					break
-				default:
-			}
+		var evt = new CustomEvent('sw-' + e.data.type, {
+			detail: e.data.payload
 		})
 
-		navigator.serviceWorker.startMessages()
+		window.dispatchEvent(evt)
+	})
 
-		navigator.serviceWorker.register('/pwa-sw.js').then(function () {
-			console.info('[sw-registered]')
+	navigator.serviceWorker.addEventListener('controllerchange', function () {
+		window.location.reload()
+	})
 
-			if (navigator.serviceWorker.controller)
-				navigator.serviceWorker.controller.postMessage({ type: 'update' })
-		}).catch(function (err) {
-			console.error('[sw-failed]', err)
+	navigator.serviceWorker.register('/pwa-sw.js').then(function (registration) {
+		console.log('[sw-registered]')
+
+		registration.addEventListener('updatefound', function () {
+			console.log('[sw-update-found]')
 		})
-	}
-	else {
-		console.error('[sw-unsupported]')
-		window.location = '/no-cache-' + Date.now() + '/index.html'
-	}
-})
+
+	}).catch(function (err) {
+		console.error('[sw-failed]', err)
+	})
+
+	navigator.serviceWorker.ready.then(function (registration) {
+		if (!registration.active)
+			return
+
+		window.sw = function (type, payload) {
+			registration.active.postMessage({ type: type, payload: payload })
+		}
+	})
+}
+else {
+	console.error('[sw-unsupported]')
+	window.location = '/no-cache-' + Date.now() + window.location.pathname
+}

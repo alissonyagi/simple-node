@@ -1,10 +1,10 @@
-CREATE TABLE IF NOT EXISTS PWA_FILE_CACHE (
-	ID_FILE_CACHE INTEGER PRIMARY KEY NOT NULL,
-	TX_FILE TEXT NOT NULL,
-	TX_HASH TEXT NOT NULL,
-	VR_STATUS TEXT NOT NULL DEFAULT "active",
-	DT_CREATION DATE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+create table if not exists pwa_file_cache (
+	id_file_cache integer primary key not null,
+	tx_file text not null,
+	tx_hash text not null,
+	tx_status text not null default 'active',
+	dt_creation text not null default current_timestamp
+) strict;
 
-CREATE INDEX IF NOT EXISTS IX_PWA_FILE_CACHE_1 ON PWA_FILE_CACHE (VR_STATUS);
-CREATE INDEX IF NOT EXISTS IX_PWA_FILE_CACHE_2 ON PWA_FILE_CACHE (TX_FILE, TX_HASH);
+create index if not exists ix_pwa_file_cache_1 on pwa_file_cache (tx_status);
+create index if not exists ix_pwa_file_cache_2 on pwa_file_cache (tx_file, tx_hash);
