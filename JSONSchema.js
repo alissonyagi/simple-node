@@ -33,7 +33,7 @@ module.exports = class JSONSchema {
 				},
 				get: function (target, prop, receiver) {
 					if (prop !== 'messages' || target.messages)
-						return target[prop]
+						return Reflect.get(target, prop, receiver)
 
 					if (!(target.errors instanceof Array))
 						return []

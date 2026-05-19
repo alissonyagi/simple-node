@@ -89,7 +89,7 @@ module.exports = class Strings {
 
 		return new Proxy(this, {
 			get (target, prop, receiver) {
-				return prop === 'lang' ? lang : target[prop]
+				return prop === 'lang' ? lang : Reflect.get(target, prop, receiver)
 			}
 		})
 	}

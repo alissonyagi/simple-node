@@ -41,7 +41,7 @@ module.exports = function (module, lang) {
 				target = new Strings(target.module, target.lang)
 
 			if (prop in target)
-				return target[prop]
+				return Reflect.get(target, prop, receiver)
 
 			return function (...args) {
 				let reference = args.shift()

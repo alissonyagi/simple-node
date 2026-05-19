@@ -73,7 +73,7 @@ module.exports = class Lightning {
 		return new Proxy(this, {
 			get (target, prop, receiver) {
 				if (target[prop])
-					return target[prop]
+					return Reflect.get(target, prop, receiver)
 
 				if (!protoMap[prop])
 					return
@@ -95,26 +95,30 @@ module.exports = class Lightning {
 
 				return target[prop] = new Proxy(target._loaded[prop], {
 					get (innerTarget, innerProp, innerReceiver) {
-						if (typeof innerTarget[innerProp] !== 'function')
-							return innerTarget[innerProp]
+						let innerRef = Reflect.get(innerTarget, innerProp, innerReceiver)
+
+						if (typeof innerRef !== 'function')
+							return innerRef
  
-						if (innerTarget[innerProp].responseStream)
+						if (innerRef.responseStream)
 							return function (...args) {
 								if (args.length === 0)
 									args.push({})
 
-								return innerTarget[innerProp](...args)
+								return innerRef(...args)
 							}
 
-						if (innerTarget._promisified[innerProp])
-							return innerTarget._promisified[innerProp]
+						let innerPromise = Reflect.get(innerTarget, '_promisified', innerReceiver)
 
-						return innerTarget._promisified[innerProp] = function (...args) {
+						if (innerPromise[innerProp])
+							return innerPromise[innerProp]
+
+						return innerPromise[innerProp] = function (...args) {
 							if (args.length === 0)
 								args.push({})
 
 							return new Promise((resolve, reject) => {
-								innerTarget[innerProp](...args, (err, res) => {
+								innerRef(...args, (err, res) => {
 									if (err)
 										return reject(err)
 

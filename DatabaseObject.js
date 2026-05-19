@@ -43,7 +43,7 @@ module.exports = class DatabaseObject extends AsyncEventEmitter {
 			db = db._db
 
 		return new Proxy(this, {
-			get: (target, prop) => (prop === '_db' ? db : target[prop])
+			get: (target, prop, receiver) => (prop === '_db' ? db : Reflect.get(target, prop, receiver))
 		})
 	}
 

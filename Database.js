@@ -63,6 +63,10 @@ class DatabaseTransaction {
 		}
 	}
 
+	prepare (...args) {
+		return this._db.prepare(...args)
+	}
+
 	run (...args) {
 		return this._db.run(...args)
 	}
@@ -73,6 +77,29 @@ class DatabaseTransaction {
 
 	all (...args) {
 		return this._db.all(...args)
+	}
+}
+
+class PreparedStatement {
+	_stmt
+
+	constructor (stmt) {
+		if (!(stmt instanceof sqlite.StatementSync))
+			throw str.error('invalid-statement', null, { stmt: stmt })
+
+		this._stmt = stmt
+
+		return new Proxy(this, {
+			get (target, prop, receiver) {
+				return prop in target ? Reflect.get(target, prop, receiver) : target._stmt[prop]
+			}
+		})
+	}
+
+	run (...args) {
+		let ret = this._stmt.run(...args)
+
+		return { id: ret.lastInsertRowid, changes: ret.changes }
 	}
 }
 
@@ -166,22 +193,6 @@ class Database extends sqlite.DatabaseSync {
 	setup () {
 		try {
 			super.exec('PRAGMA foreign_keys=ON')
-
-			/*const params = this._params
-
-			super.function('param', { varargs: true }, (name, value) => {
-				try {
-					let lower = name.toLowerCase()
-
-					if (typeof value !== 'undefined')
-						params[lower] = value
-		
-					return params[lower]
-				}
-				catch (e) {
-					return null
-				}
-			})*/
 		}
 		catch (e) {
 			throw str.error('foreign-key-mode-failed', null, { error: e })
@@ -194,6 +205,15 @@ class Database extends sqlite.DatabaseSync {
 		}
 		catch (e) {
 			throw str.error('begin-transaction-failed', null, { error: e })
+		}
+	}
+
+	prepare (sql, ...args) {
+		try {
+			return new PreparedStatement(super.prepare(sql, ...args))
+		}
+		catch (e) {
+			throw str.error('prepare-failed', null, { error: e, sql: sql, args: args })
 		}
 	}
 

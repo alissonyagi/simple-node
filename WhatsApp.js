@@ -41,8 +41,8 @@ module.exports = class WhatsApp {
 		this.client.on('ready', () => this.ping())
 
 		return new Proxy(this, {
-			get (obj, prop) {
-				return obj[prop] || obj.client[prop]
+			get (obj, prop, receiver) {
+				return Reflect.get(obj, prop, receiver) || obj.client[prop]
 			}
 		})
 	}
