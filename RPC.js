@@ -329,7 +329,8 @@ class Client extends net.Socket {
 
 	ping () {
 		this.request('__ping').then(() => {
-			this.emit('ping')
+			if (this.writable)
+				this.emit('ping')
 
 			this.timer.ping = setTimeout(this.ping.bind(this), this.opts.ping)
 		}).catch(err => {
