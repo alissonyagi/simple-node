@@ -297,6 +297,9 @@ class Client extends net.Socket {
 		const self = this
 
 		return new Promise((resolve, reject) => {
+			if (!this.writable)
+				return reject('not-writable')
+
 			writeMessage(self, protocol.request(id, name, args))
 
 			self.once('response-' + id, res => {
@@ -329,8 +332,7 @@ class Client extends net.Socket {
 
 	ping () {
 		this.request('__ping').then(() => {
-			if (this.writable)
-				this.emit('ping')
+			this.emit('ping')
 
 			this.timer.ping = setTimeout(this.ping.bind(this), this.opts.ping)
 		}).catch(err => {
