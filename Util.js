@@ -130,7 +130,7 @@ module.exports = class Util {
 				ref[parent + p] = this.flat(obj[p], opts, depth, ref, parent, indexed)
 			}
 
-			if (opts.accepted.length !== 0 && !opts.accepted.includes(typeof obj[p]))
+			if (opts.accepted?.length !== 0 && !opts.accepted.includes(typeof obj[p]))
 				continue
 
 			ref[parent + p] = obj[p]
