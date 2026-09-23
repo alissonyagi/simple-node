@@ -90,8 +90,10 @@ module.exports = class Util {
 		if (!Util.isObject(obj1) || !Util.isObject(obj2))
 			throw str.error('unsupported-merge')
 
-		for (let p in obj2) {
-			if (!overwrite && obj1[p])
+		let keys = Object.keys(obj2)
+
+		for (let p of keys) {
+			if (!overwrite && typeof obj1[p] !== 'undefined')
 				continue
 
 			if (Util.isObject(obj2[p]))
@@ -105,7 +107,7 @@ module.exports = class Util {
 
 	// Deep flat objects (dot notation), returning a new object
 
-	static flat (obj, opts = { depth: null, accepted: [] }, depth = 0, ref = {}, parent = '', indexed = []) {
+	static flat (obj, opts = { depth: null, accepted: [], partial: false }, depth = 0, ref = {}, parent = '', indexed = []) {
 		if (Array.isArray(obj))
 			return obj.flat(Infinity).filter(v => opts.accepted.length === 0 || opts.accepted.includes(typeof v))
 
@@ -115,6 +117,9 @@ module.exports = class Util {
 					continue
 
 				indexed.push(obj[p])
+
+				if (opts.partial)
+					ref[parent + p] = obj[p]
 
 				this.flat(obj[p], opts, depth + 1, ref, parent + p + '.', indexed)
 
