@@ -108,6 +108,9 @@ module.exports = class Util {
 	// Deep flat objects (dot notation), returning a new object
 
 	static flat (obj, opts = { depth: null, accepted: [], partial: false }, depth = 0, ref = {}, parent = '', indexed = []) {
+		if (depth === 0 && !Array.isArray(opts.accepted))
+			opts.accepted = []
+
 		if (Array.isArray(obj))
 			return obj.flat(Infinity).filter(v => opts.accepted.length === 0 || opts.accepted.includes(typeof v))
 
@@ -130,7 +133,7 @@ module.exports = class Util {
 				ref[parent + p] = this.flat(obj[p], opts, depth, ref, parent, indexed)
 			}
 
-			if (opts.accepted?.length !== 0 && !opts.accepted.includes(typeof obj[p]))
+			if (opts.accepted.length !== 0 && !opts.accepted.includes(typeof obj[p]))
 				continue
 
 			ref[parent + p] = obj[p]
