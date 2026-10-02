@@ -30,7 +30,7 @@ class DatabaseTransaction {
 			throw str.error('transaction-timeout')
 		}.bind(this), timeout)
 
-		this._db.exec('BEGIN TRANSACTION')
+		this._db.exec('BEGIN IMMEDIATE')
 	}
 
 	commit () {
