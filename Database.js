@@ -91,7 +91,12 @@ class PreparedStatement {
 
 		return new Proxy(this, {
 			get (target, prop, receiver) {
-				return prop in target ? Reflect.get(target, prop, receiver) : target._stmt[prop]
+				if (prop in target)
+					return Reflect.get(target, prop, receiver)
+
+				let val = target._stmt[prop]
+
+				return typeof val === 'function' ? val.bind(target._stmt) : val
 			}
 		})
 	}
@@ -193,6 +198,7 @@ class Database extends sqlite.DatabaseSync {
 	setup () {
 		try {
 			super.exec('PRAGMA foreign_keys=ON')
+			super.exec('PRAGMA busy_timeout=5000')
 		}
 		catch (e) {
 			throw str.error('foreign-key-mode-failed', null, { error: e })
