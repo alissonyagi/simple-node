@@ -102,9 +102,32 @@ class PreparedStatement {
 	}
 
 	run (...args) {
-		let ret = this._stmt.run(...args)
+		try {
+			let ret = this._stmt.run(...args)
 
-		return { id: ret.lastInsertRowid, changes: ret.changes }
+			return { id: ret.lastInsertRowid, changes: ret.changes }
+		}
+		catch (e) {
+			throw str.error('stmt-run-failed', null, { error: e, sql: this._stmt.sourceSQL, args: args })
+		}
+	}
+
+	get (...args) {
+		try {
+			return this._stmt.get(...args)
+		}
+		catch (e) {
+			throw str.error('stmt-get-failed', null, { error: e, sql: this._stmt.sourceSQL, args: args })
+		}
+	}
+
+	all (...args) {
+		try {
+			return this._stmt.all(...args)
+		}
+		catch (e) {
+			throw str.error('stmt-get-failed', null, { error: e, sql: this._stmt.sourceSQL, args: args })
+		}
 	}
 }
 
