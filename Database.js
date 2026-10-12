@@ -137,11 +137,14 @@ class Database extends sqlite.DatabaseSync {
 	_addons = []
 
 	constructor (filename = defaultDatabase, opts = {}) {
-		try {
-			super(filename, opts)
+		super(filename, opts)
 
+		try {
 			this._filename = filename
 			this._opts = JSON.parse(JSON.stringify(opts))
+
+			if (this.isOpen)
+				this.setup()
 		}
 		catch (e) {
 			if (this.isOpen)
@@ -149,9 +152,6 @@ class Database extends sqlite.DatabaseSync {
 
 			throw str.error('load-failed', null, { filename: filename })
 		}
-
-		if (this.isOpen)
-			this.setup()
 	}
 
 	pragma (val) {
