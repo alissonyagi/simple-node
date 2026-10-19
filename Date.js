@@ -57,23 +57,23 @@ module.exports = class Date extends global.Date {
 
 			if (utc)
 				res = new Date(Date.UTC(
-					groups.fullYear || ref.getUTCFullYear(),
-					(parseInt(groups.month) - 1) || ref.getUTCMonth(),
-					groups.date || ref.getUTCDate(),
-					groups.hours || ref.getUTCHours(),
-					groups.minutes || ref.getUTCMinutes(),
-					groups.seconds || ref.getUTCSeconds(),
-					groups.milliseconds || ref.getUTCMilliseconds()
+					typeof groups.fullYear !== 'undefined' ? groups.fullYear : ref.getUTCFullYear(),
+					typeof groups.month !== 'undefined' ? (parseInt(groups.month) - 1) : ref.getUTCMonth(),
+					typeof groups.date !== 'undefined' ? groups.date : ref.getUTCDate(),
+					typeof groups.hours !== 'undefined' ? groups.hours : ref.getUTCHours(),
+					typeof groups.minutes !== 'undefined' ? groups.minutes : ref.getUTCMinutes(),
+					typeof groups.seconds !== 'undefined' ? groups.seconds : ref.getUTCSeconds(),
+					typeof groups.milliseconds !== 'undefined' ? groups.milliseconds : ref.getUTCMilliseconds()
 				))
 			else
 				res = new Date(
-					groups.fullYear || ref.getFullYear(),
-					(parseInt(groups.month) - 1) || ref.getMonth(),
-					groups.date || ref.getDate(),
-					groups.hours || ref.getHours(),
-					groups.minutes || ref.getMinutes(),
-					groups.seconds || ref.getSeconds(),
-					groups.milliseconds || ref.getMilliseconds()
+					typeof groups.fullYear !== 'undefined' ? groups.fullYear : ref.getFullYear(),
+					typeof groups.month !== 'undefined' ? (parseInt(groups.month) - 1) : ref.getMonth(),
+					typeof groups.date !== 'undefined' ? groups.date : ref.getDate(),
+					typeof groups.hours !== 'undefined' ? groups.hours : ref.getHours(),
+					typeof groups.minutes !== 'undefined' ? groups.minutes : ref.getMinutes(),
+					typeof groups.seconds !== 'undefined' ? groups.seconds : ref.getSeconds(),
+					typeof groups.milliseconds !== 'undefined' ? groups.milliseconds : ref.getMilliseconds()
 				)
 
 			let check = res.format(fmt, utc)
