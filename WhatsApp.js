@@ -17,10 +17,6 @@ module.exports = class WhatsApp {
 			throw str.error('invalid-client-id')
 
 		const base = {
-			webVersionCache: {
-				remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/refs/heads/main/html/2.3000.1026810516-alpha.html',
-				type: 'remote'
-			},
 			authStrategy: new WhatsApp.LocalAuth({ clientId: id }),
 			puppeteer: {
 				args: ['--no-sandbox', '--disable-setuid-sandbox', '--single-process', '--no-zygote']
