@@ -19,7 +19,7 @@
     "patch-package": "^8.0.0",
     "postinstall-postinstall": "^2.1.0",
     "puppeteer": "^24.43.1",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js"
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#auto-wa-web-update/patch"
   },
   "overrides": {
     "node-fetch@2.x": {
