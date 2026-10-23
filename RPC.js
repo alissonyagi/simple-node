@@ -70,24 +70,6 @@ function readMessage (socket, cb) {
 			cb(payload)
 		}
 	})
-
-	/*let buf = Buffer.alloc(0)
-
-	socket.on('data', chunk => {
-		buf = Buffer.concat([buf, chunk])
-
-		while (buf.length >= 4) {
-			const len = buf.readUInt32BE(0)
-
-			if (buf.length < 4 + len)
-				break
-
-			const complete = buf.slice(4, 4 + len)
-			buf = buf.slice(4 + len)
-
-			cb(complete)
-		}
-	})*/
 }
 
 function writeMessage (socket, input) {
