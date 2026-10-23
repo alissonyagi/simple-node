@@ -157,7 +157,7 @@ class Server {
 							return writeMessage(socket, protocol.response(req.id, true, ret))
 
 						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => {
-							writeMessage(socket, protocol.response(req.id, false, self.expose ? protocol.error(e) : null))
+							writeMessage(socket, protocol.response(req.id, false, self.expose ? protocol.error(err) : null))
 							server.emit('error', err)
 						})
 					}
