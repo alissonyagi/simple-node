@@ -341,6 +341,8 @@ class Client extends net.Socket {
 	}
 
 	ping () {
+		clearTimeout(this.timer.ping)
+
 		this.request('__ping').then(() => {
 			this.emit('ping')
 
