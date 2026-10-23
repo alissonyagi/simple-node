@@ -2,7 +2,7 @@ const fs = require('node:fs')
 const net = require('node:net')
 const EventEmitter = require('node:events')
 
-const CHUNK_SIZE = 64 * 1024; // 64KB
+const CHUNK_SIZE = 16 * 1024; // 64KB
 
 const protocol = {
 	encode: function (val) {
@@ -32,11 +32,46 @@ const protocol = {
 			throw new Error('invalid-response')
 
 		return val
+	},
+	error: function (err) {
+		if (err instanceof Error)
+			return { message: err.message, stack: err.stack }
+
+		return err
 	}
 }
 
 function readMessage (socket, cb) {
-	let buf = Buffer.alloc(0)
+	let len = null
+
+	socket.on('readable', () => {
+		while (true) {
+			if (len === null) {
+				let header = socket.read(4)
+
+				if (header === null)
+					break
+
+				len = header.readUInt32BE(0)
+			}
+
+			if (len === 0) {
+				len = null
+				cb(Buffer.alloc(0))
+				continue
+			}
+
+			let payload = socket.read(len)
+
+			if (payload === null)
+				break
+
+			len = null
+			cb(payload)
+		}
+	})
+
+	/*let buf = Buffer.alloc(0)
 
 	socket.on('data', chunk => {
 		buf = Buffer.concat([buf, chunk])
@@ -52,27 +87,17 @@ function readMessage (socket, cb) {
 
 			cb(complete)
 		}
-	})
+	})*/
 }
 
-async function writeMessage (socket, input) {
+function writeMessage (socket, input) {
 	const len = Buffer.alloc(4)
 	len.writeUInt32BE(input.length, 0)
 
-	const buf = Buffer.concat([len, input])
-
-	let offset = 0
-
-	while (offset < buf.length) {
-		const end = Math.min(offset + CHUNK_SIZE, buf.length)
-		const chunk = buf.slice(offset, end)
-		const written = socket.write(chunk)
-
-		offset = end
-
-		if (!written)
-			await new Promise(resolve => socket.once('drain', resolve))
-	}
+	socket.cork()
+	socket.write(len)
+	socket.write(input)
+	socket.uncork()
 }
 
 class Server {
@@ -149,11 +174,14 @@ class Server {
 						if (!(ret instanceof Promise))
 							return writeMessage(socket, protocol.response(req.id, true, ret))
 
-						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => server.emit('error', err))
+						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => {
+							writeMessage(socket, protocol.response(req.id, false, self.expose ? protocol.error(e) : null))
+							server.emit('error', err)
+						})
 					}
 					catch (e) {
 						if (typeof req === 'object')
-							writeMessage(socket, protocol.response(req.id, false, self.expose ? e : null))
+							writeMessage(socket, protocol.response(req.id, false, self.expose ? protocol.error(e) : null))
 					}
 				})
 			})
@@ -337,6 +365,9 @@ class Client extends net.Socket {
 			this.timer.ping = setTimeout(this.ping.bind(this), this.opts.ping)
 		}).catch(err => {
 			this.emit('pingFailed', err)
+
+			if (this.opts.reconnect)
+				this.destroy()
 		})
 	}
 }
