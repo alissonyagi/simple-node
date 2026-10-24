@@ -43,6 +43,9 @@ function readMessage (socket, cb) {
 
 	socket.on('close', () => {
 		len = null
+
+		// Drain
+		while (socket.read() !== null) {}
 	})
 
 	socket.on('readable', () => {
@@ -50,7 +53,7 @@ function readMessage (socket, cb) {
 			if (len === null) {
 				let header = socket.read(4)
 
-				if (header === null)
+				if (header === null || header.length < 4)
 					break
 
 				len = header.readUInt32BE(0)
@@ -299,6 +302,12 @@ class Client extends net.Socket {
 
 	connect (...args) {
 		this.args = args
+
+		// Forces Socket._undestroy to properly reset state
+
+		this.readable = true
+		this.writable = true
+
 		super.connect(...args)
 	}
 
