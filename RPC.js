@@ -1,8 +1,5 @@
 const fs = require('node:fs')
 const net = require('node:net')
-const EventEmitter = require('node:events')
-
-const CHUNK_SIZE = 16 * 1024; // 64KB
 
 const protocol = {
 	encode: function (val) {
@@ -44,6 +41,10 @@ const protocol = {
 function readMessage (socket, cb) {
 	let len = null
 
+	socket.on('close', () => {
+		len = null
+	})
+
 	socket.on('readable', () => {
 		while (true) {
 			if (len === null) {
@@ -73,6 +74,9 @@ function readMessage (socket, cb) {
 }
 
 function writeMessage (socket, input) {
+	if (!socket.writable)
+		return
+
 	const len = Buffer.alloc(4)
 	len.writeUInt32BE(input.length, 0)
 
@@ -101,7 +105,7 @@ class Server {
 		if (typeof handshakeHandler !== 'function')
 			handshakeHandler = () => true
 
-		this.autoclear = opts.autoclear || true
+		this.autoclear = opts.autoclear ?? true
 		this.expose = opts.expose || false
 		this.methods = methods
 		this.handshakeHandler = handshakeHandler
@@ -229,10 +233,14 @@ class Client extends net.Socket {
 		const self = this
 
 		this.on('close', () => {
-			try {
-				clearTimeout(self.timer.ping)
+			for (let key in self.timer) {
+				clearTimeout(self.timer[key])
+
+				delete self.timer[key]
+
+				if (key.startsWith('request-'))
+					self.emit(key.replace(/^(request-)/, 'error-'), new Error('socket-closed'))
 			}
-			catch (e) {}
 
 			if (self.opts.reconnect) {
 				self.timer.reconnect = setTimeout(() => {
@@ -251,18 +259,19 @@ class Client extends net.Socket {
 				self.emit((res.success ? 'response' : 'error') + '-' + res.id, res.data)
 			}
 			catch (e) {
-				if (typeof res === 'object')
-					self.emit('error-' + res.id, e)
+				self.emit('error', e)
 			}
 		})
 
 		this.on('connect', () => {
+			clearTimeout(self.timer.reconnect)
+
 			self.request('__methods', [self.handshake]).then(list => {
 				for (let n in self.remote)
 					delete self.remote[n]
 
 				if (typeof list !== 'object' || !(list instanceof Array))
-					return self.emit('error', new Error('invalid-method-list'))
+					throw new Error('invalid-method-list')
 
 				for (let i = 0; i < list.length; i++)
 					self.remote[list[i]] = (...args) => self.request(list[i], args)
@@ -273,7 +282,7 @@ class Client extends net.Socket {
 					self.ping()
 			}).catch(e => {
 				self.emit('error', e)
-				self.end()
+				self.destroy()
 			})
 		})
 	}
@@ -296,6 +305,10 @@ class Client extends net.Socket {
 	close (force = false) {
 		this.opts.reconnect = false
 
+		clearTimeout(this.timer.reconnect)
+
+		delete this.timer.reconnect
+
 		if (force === true)
 			this.destroy()
 		else
@@ -312,27 +325,28 @@ class Client extends net.Socket {
 
 			writeMessage(self, protocol.request(id, name, args))
 
-			self.once('response-' + id, res => {
+			const cleanup = () => {
+				self.removeAllListeners('response-' + id)
 				self.removeAllListeners('error-' + id)
 				self.removeAllListeners('timeout-' + id)
 
 				clearTimeout(self.timer['request-' + id])
 
+				delete self.timer['request-' + id]
+			}
+
+			self.once('response-' + id, res => {
+				cleanup()
 				resolve(res)
 			})
 
 			self.once('error-' + id, err => {
-				self.removeAllListeners('response-' + id)
-				self.removeAllListeners('timeout-' + id)
-
-				clearTimeout(self.timer['request-' + id])
-
+				cleanup()
 				reject(err)
 			})
 
 			self.once('timeout-' + id, () => {
-				self.removeAllListeners('response-' + id)
-				self.removeAllListeners('error-' + id)
+				cleanup()
 				reject('timeout')
 			})
 
@@ -350,7 +364,7 @@ class Client extends net.Socket {
 		}).catch(err => {
 			this.emit('pingFailed', err)
 
-			if (this.opts.reconnect)
+			if (this.opts.reconnect && !this.destroyed)
 				this.destroy()
 		})
 	}
