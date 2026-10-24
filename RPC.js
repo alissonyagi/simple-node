@@ -39,39 +39,25 @@ const protocol = {
 }
 
 function readMessage (socket, cb) {
-	let len = null
+	let buf = Buffer.alloc(0)
 
 	socket.on('close', () => {
-		len = null
-
-		// Drain
-		while (socket.read() !== null) {}
+		buf = Buffer.alloc(0)
 	})
 
-	socket.on('readable', () => {
-		while (true) {
-			if (len === null) {
-				let header = socket.read(4)
+	socket.on('data', chunk => {
+		buf = Buffer.concat([buf, chunk])
 
-				if (header === null || header.length < 4)
-					break
+		while (buf.length >= 4) {
+			const len = buf.readUInt32BE(0)
 
-				len = header.readUInt32BE(0)
-			}
-
-			if (len === 0) {
-				len = null
-				cb(Buffer.alloc(0))
-				continue
-			}
-
-			let payload = socket.read(len)
-
-			if (payload === null)
+			if (buf.length < 4 + len)
 				break
 
-			len = null
-			cb(payload)
+			const complete = buf.slice(4, 4 + len)
+			buf = buf.slice(4 + len)
+
+			cb(complete)
 		}
 	})
 }
