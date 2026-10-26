@@ -35,6 +35,8 @@ module.exports = class Date extends global.Date {
 				return '(?<date>[0-9]{2})'
 			case 'm':
 				return '(?<month>[0-9]{2})'
+			case 'y':
+				return '(?<year>[0-9]{2})'
 			case 'Y':
 				return '(?<fullYear>[0-9]{4})'
 			default:
@@ -54,6 +56,9 @@ module.exports = class Date extends global.Date {
 			let groups = parts.groups || {}
 
 			let res
+
+			if (groups.year)
+				groups.fullYear = Math.floor((utc ? ref.getUTCFullYear() : ref.getFullYear()) / 100) * 100 + parseInt(groups.year)
 
 			if (utc)
 				res = new Date(Date.UTC(
@@ -115,6 +120,8 @@ module.exports = class Date extends global.Date {
 					return this.#format.pad(utc ? this.getUTCDate() : this.getDate())
 				case 'm':
 					return this.#format.pad(utc ? this.getUTCMonth() + 1 : this.getMonth() + 1)
+				case 'y':
+					return parseInt(('' + (utc ? this.getUTCFullYear() : this.getFullYear())).substr(-2))
 				case 'Y':
 					return utc ? this.getUTCFullYear() : this.getFullYear()
 				default:
