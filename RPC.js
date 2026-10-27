@@ -368,7 +368,7 @@ class Client extends net.Socket {
 function listen (socket, methods, opts, handshakeHandler) {
 	return new Promise((resolve, reject) => {
 		try {
-			const server = new RPC.Server(methods, opts, handshakeHandler)
+			const server = new Server(methods, opts, handshakeHandler)
 
 			server.listen(socket).then(resolve).catch(reject)
 		}
