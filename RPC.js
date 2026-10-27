@@ -365,4 +365,44 @@ class Client extends net.Socket {
 	}
 }
 
-module.exports = { Server, Client }
+function listen (socket, methods, opts, handshakeHandler) {
+	return new Promise((resolve, reject) => {
+		try {
+			const server = new RPC.Server(methods, opts, handshakeHandler)
+
+			server.listen(socket).then(resolve).catch(reject)
+		}
+		catch (e) {
+			reject(e)
+		}
+	})
+}
+
+function connect (socket, opts) {
+	return new Promise((resolve, reject) => {
+		try {
+			const client = new Client(opts)
+
+			let ready
+			let error = err => {
+				client.off('ready', ready)
+				reject(err)
+			}
+
+			ready = () => {
+				client.off('error', error)
+				resolve(client)
+			}
+
+			client.once('ready', ready)
+			client.once('error', error)
+
+			client.connect(socket)
+		}
+		catch (e) {
+			reject(e)
+		}
+	})
+}
+
+module.exports = { Server, Client, listen, connect }
