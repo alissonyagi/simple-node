@@ -378,7 +378,7 @@ function listen (socket, methods, opts, handshakeHandler) {
 	})
 }
 
-function connect (socket, opts) {
+function connect (socket, opts = { reconnect: true }) {
 	return new Promise((resolve, reject) => {
 		try {
 			const client = new Client(opts)
