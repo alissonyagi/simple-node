@@ -48,7 +48,7 @@ module.exports = class Cron {
 		if (typeof what !== 'function')
 			throw str.error('invalid-function')
 
-		if (interval?.constructor?.name === 'Date')
+		if (interval === '@reboot' || interval?.constructor?.name === 'Date')
 			return this.once(interval, what, ...args)
 
 		let record = { interval, what, args }
