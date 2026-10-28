@@ -88,8 +88,7 @@ class Server {
 			if (typeof methods[n] !== 'function')
 				throw new Error('invalid-method', { cause: n })
 
-		if (typeof opts !== 'object')
-			opts = {}
+		opts = opts ?? {}
 
 		if (typeof handshakeHandler !== 'function')
 			handshakeHandler = () => true
@@ -118,17 +117,15 @@ class Server {
 						let ret
 
 						switch (req.name) {
-							case '__ping':
-								ret = true
-								break
 							case '__methods':
 								ret = new Promise(async (resolve, reject) => {
 									try {
 										let handshakeRet = await self.handshakeHandler(req.args[0])
 
 										if (handshakeRet === false)
-											return reject(false)
+											return reject('handshaked-failed')
 
+										socket.accepted = true
 										socket.handshake = req.args[0]
 										resolve(Object.keys(self.methods))
 									}
@@ -137,7 +134,13 @@ class Server {
 									}
 								})
 								break
+							case '__ping':
+								ret = true
+								break
 							default:
+								if (socket.accepted !== true)
+									throw 'not-accepted'
+
 								if (!self.methods[req.name])
 									throw 'invalid-method'
 
@@ -152,6 +155,9 @@ class Server {
 						ret.then(val => writeMessage(socket, protocol.response(req.id, true, val))).catch(err => {
 							writeMessage(socket, protocol.response(req.id, false, self.expose ? protocol.error(err) : null))
 							server.emit('error', err)
+
+							if (req.name === '__methods')
+								socket.destroy()
 						})
 					}
 					catch (e) {
@@ -201,8 +207,7 @@ class Client extends net.Socket {
 	counter
 
 	constructor (opts, handshake = {}) {
-		if (typeof opts !== 'object')
-			opts = {}
+		opts = opts ?? {}
 
 		super(opts)
 
@@ -378,10 +383,12 @@ function listen (socket, methods, opts, handshakeHandler) {
 	})
 }
 
-function connect (socket, opts = { reconnect: true }) {
+function connect (socket, opts, handshake) {
 	return new Promise((resolve, reject) => {
 		try {
-			const client = new Client(opts)
+			const defaultOpts = { reconnect: true }
+
+			const client = new Client(opts || defaultOpts, handshake)
 
 			let ready
 			let error = err => {
