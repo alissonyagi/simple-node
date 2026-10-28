@@ -11,13 +11,15 @@ const map = {
 	'@weekly': '0 0 * * 0',
 	'@daily': '0 0 * * *',
 	'@midnight': '0 0 * * *',
-	'@hourly': '0 * * * *'
+	'@hourly': '0 * * * *',
+	'@minutely': '* * * * *',
 }
 
 const regexFields = /^(?<minute>[^\t ]+)[\t ](?<hour>[^\t ]+)[\t ](?<dom>[^\t ]+)[\t ](?<month>[^\t ]+)[\t ](?<dow>[^\t ]+)/
 
 module.exports = class Cron {
 	crontab
+	#nextRun
 
 	static parse (val, asterisk, expected) {
 		let list = val.replace('*', asterisk).split(',')
@@ -39,13 +41,42 @@ module.exports = class Cron {
 
 	constructor () {
 		this.crontab = []
+		this.#nextRun = null
 	}
 
-	add (interval, what, ...args) {
+	on (interval, what, ...args) {
 		if (typeof what !== 'function')
 			throw str.error('invalid-function')
 
-		this.crontab.push({ interval, what, args })
+		if (interval?.constructor?.name === 'Date')
+			return this.once(interval, what, ...args)
+
+		let record = { interval, what, args }
+
+		this.crontab.push(record)
+
+		return record
+	}
+
+	off (record) {
+		let pos = this.crontab.indexOf(record)
+
+		if (pos >= 0)
+			this.crontab.splice(pos, 1)
+	}
+
+	once (interval, what, ...args) {
+		let self = this
+		let record = { interval, args }
+
+		record.what = async function (...internal) {
+			await what(...internal)
+			self.off(record)
+		}
+
+		this.crontab.push(record)
+
+		return record
 	}
 
 	start () {
@@ -54,15 +85,27 @@ module.exports = class Cron {
 
 	async #run (firstRun = false) {
 		let now = new Date()
-		let nextRun = new Date().add(1, 'minute').truncate('seconds')
 
-		setTimeout(this.#run.bind(this), nextRun - Date.now())
+		this.#nextRun = new Date().add(1, 'minute').truncate('seconds').getTime()
+
+		setTimeout(this.#run.bind(this), this.#nextRun - Date.now())
 
 		for (let record of this.crontab) {
-			if (record.interval === '@reboot' && !firstRun || record.interval !== '@reboot' && firstRun)
+			let parsed
+
+			if (record.interval.constructor.name === 'Date') {
+				if (record.interval.getTime() > this.#nextRun)
+					continue
+
+				parsed = '@minutely'
+			}
+			else
+				parsed = record.interval
+
+			if (parsed === '@reboot' && !firstRun || parsed !== '@reboot' && firstRun)
 				continue
 
-			let interval = map[record.interval] || record.interval
+			let interval = map[parsed] || parsed
 			let fields = interval.match(regexFields)
 
 			if (fields === null)
