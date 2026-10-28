@@ -41,11 +41,11 @@ module.exports = class Cron {
 		this.crontab = []
 	}
 
-	add (interval, what) {
+	add (interval, what, ...args) {
 		if (typeof what !== 'function')
 			throw str.error('invalid-function')
 
-		this.crontab.push({ interval, what })
+		this.crontab.push({ interval, what, args })
 	}
 
 	start () {
@@ -59,7 +59,7 @@ module.exports = class Cron {
 		setTimeout(this.#run.bind(this), nextRun - Date.now())
 
 		for (let record of this.crontab) {
-			if (record.interval === '@reboot' && !firstRun)
+			if (record.interval === '@reboot' && !firstRun || record.interval !== '@reboot' && firstRun)
 				continue
 
 			let interval = map[record.interval] || record.interval
@@ -78,7 +78,7 @@ module.exports = class Cron {
 			str.debug('running', record.what.name)
 
 			try {
-				await record.what()
+				await record.what(...record.args)
 			}
 			catch (e) {
 				str.error('failed', null, { error: e })
