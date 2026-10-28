@@ -192,6 +192,38 @@ module.exports = class Date extends global.Date {
 		return this
 	}
 
+	truncate (unit) {
+		switch (unit) {
+			case 'd':
+			case 'day':
+			case 'days':
+				this.setDate(1)
+			case 'h':
+			case 'hour':
+			case 'hours':
+				this.setHours(0)
+			case 'm':
+			case 'min':
+			case 'minute':
+			case 'minutes':
+				this.setMinutes(0)
+			case 's':
+			case 'sec':
+			case 'second':
+			case 'seconds':
+				this.setSeconds(0)
+			case 'ms':
+			case 'millisecond':
+			case 'milliseconds':
+				this.setMilliseconds(0)
+				break
+			default:
+				throw 'Invalid unit specified'
+		}
+
+		return this
+	}
+
 	getTimestamp () {
 		return Math.round(this.getTime() / 1000)
 	}

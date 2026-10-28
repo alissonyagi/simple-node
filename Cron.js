@@ -1,8 +1,5 @@
-const fs = require('node:fs')
-const path = require('node:path')
-const { exec } = require('node:child_process')
-const config = require('./config')
 const Strings = require('./Strings')
+const Date = require('./Date')
 
 const str = new Strings('Cron')
 
@@ -17,9 +14,7 @@ const map = {
 	'@hourly': '0 * * * *'
 }
 
-process.on('uncaughtException', err => {
-	str.error('uncaught-exception', null, { error: err })
-})
+const regexFields = /^(?<minute>[^\t ]+)[\t ](?<hour>[^\t ]+)[\t ](?<dom>[^\t ]+)[\t ](?<month>[^\t ]+)[\t ](?<dow>[^\t ]+)/
 
 module.exports = class Cron {
 	crontab
@@ -42,50 +37,33 @@ module.exports = class Cron {
 		return false
 	}
 
-	constructor (crontab) {
-		this.crontab = path.resolve(config.project.path, crontab)
+	constructor () {
+		this.crontab = []
+	}
 
-		if (!fs.existsSync(this.crontab))
-			throw str.error('crontab-not-found', null, { path: this.crontab })
+	add (interval, what) {
+		if (typeof what !== 'function')
+			throw str.error('invalid-function')
 
+		this.crontab.push({ interval, what })
+	}
+
+	start () {
 		this.#run(true)
 	}
 
 	async #run (firstRun = false) {
 		let now = new Date()
-		let nextRun = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes() + 1, 1, 0)
+		let nextRun = new Date().add(1, 'minute').truncate('seconds')
 
 		setTimeout(this.#run.bind(this), nextRun - Date.now())
 
-		let crontab = fs.readFileSync(this.crontab, { encoding: 'utf8' })
-		let rows = crontab.split("\n")
-		let opts = { env: process.env }
-
-		for (let i = 0; i < rows.length; i++) {
-			if (rows[i] === '' || rows[i][0] === '#')
+		for (let record of this.crontab) {
+			if (record.interval === '@reboot' && !firstRun)
 				continue
 
-			if (/^[a-zA-Z0-9_]+=/.test(rows[i])) {
-				let parts = rows[i].split('=', 2)
-
-				opts.env[parts[0]] = parts[1]
-
-				if (parts[0] === 'SHELL')
-					opts.shell = parts[1]
-
-				continue
-			}
-
-			let regexAlias = /^(@[^\t ]+)/
-			let alias = rows[i].match(regexAlias)?.[0]
-
-			if (alias === '@reboot' && !firstRun || alias !== '@reboot' && firstRun)
-				continue
-
-			if (alias)
-				rows[i] = rows[i].replace(regexAlias, map[alias])
-
-			let fields = rows[i].match(/^(?<minute>[^\t ]+)[\t ](?<hour>[^\t ]+)[\t ](?<dom>[^\t ]+)[\t ](?<month>[^\t ]+)[\t ](?<dow>[^\t ]+)[\t ](?<cmd>.+)/)
+			let interval = map[record.interval] || record.interval
+			let fields = interval.match(regexFields)
 
 			if (fields === null)
 				continue
@@ -97,22 +75,14 @@ module.exports = class Cron {
 			    !Cron.parse(fields.groups.dow, '0-6', now.getDay()) || (now.getDay() === 0 ? Cron.parse(fields.groups.dow, '0-6', 7) : false))
 				continue
 
-			str.debug('running', { cmd: fields.groups.cmd })
+			str.debug('running', record.what.name)
 
-			exec(fields.groups.cmd, opts, (err, stdout, stderr) => {
-				if (err)
-					str.error('command-error', null, { error: err })
-
-				if (stdout) {
-					str.info('command-stdout', null, { output: stdout })
-					console.log(stdout)
-				}
-
-				if (stderr) {
-					str.info('command-stderr', null, { output: stderr })
-					console.error(stderr)
-				}
-			})
+			try {
+				await record.what()
+			}
+			catch (e) {
+				str.error('failed', null, { error: e })
+			}
 		}
 	}
 }
