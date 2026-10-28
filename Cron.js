@@ -124,7 +124,7 @@ module.exports = class Cron {
 				await record.what(...record.args)
 			}
 			catch (e) {
-				str.error('failed', null, { error: e })
+				str.warn('failed', null, { error: e })
 			}
 		}
 	}
