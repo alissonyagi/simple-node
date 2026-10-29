@@ -370,12 +370,27 @@ class Client extends net.Socket {
 	}
 }
 
+function parseSocket (socket) {
+	if (!socket.startsWith('tcp://'))
+		return [socket]
+
+	const url = new URL(socket)
+	const port = parseInt(url.port, 10)
+
+	if (!url.hostname || !url.port)
+		throw 'invalid-tcp-socket'
+
+	return [port, url.hostname]
+}
+
 function listen (socket, methods, opts, handshakeHandler) {
 	return new Promise((resolve, reject) => {
 		try {
+			const parsed = parseSocket(socket)
+
 			const server = new Server(methods, opts, handshakeHandler)
 
-			server.listen(socket).then(resolve).catch(reject)
+			server.listen(...parsed).then(resolve).catch(reject)
 		}
 		catch (e) {
 			reject(e)
@@ -386,6 +401,8 @@ function listen (socket, methods, opts, handshakeHandler) {
 function connect (socket, opts, handshake) {
 	return new Promise((resolve, reject) => {
 		try {
+			const parsed = parseSocket(socket)
+
 			const defaultOpts = { reconnect: true }
 
 			const client = new Client(opts || defaultOpts, handshake)
@@ -404,7 +421,7 @@ function connect (socket, opts, handshake) {
 			client.once('ready', ready)
 			client.once('error', error)
 
-			client.connect(socket)
+			client.connect(...parsed)
 		}
 		catch (e) {
 			reject(e)
