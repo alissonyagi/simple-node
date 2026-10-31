@@ -114,7 +114,7 @@ module.exports = class Logger extends EventEmitter {
 			stream.write(util.inspect(data.extra, opts))
 
 		if (!defaultOpts.verbose && !chosen.trace || !data.stack)
-			return
+			return stream.end()
 
 		let stack = data.stack.split("\n")
 		stack.shift()

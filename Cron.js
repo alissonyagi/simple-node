@@ -55,11 +55,16 @@ module.exports = class Cron {
 
 		this.crontab.push(record)
 
-		return record
+		return new WeakRef(record)
 	}
 
-	off (record) {
-		let pos = this.crontab.indexOf(record)
+	off (weakref) {
+		let target = weakref instanceof WeakRef ? weakref.deref() : weakref
+
+		if (!target)
+			return
+
+		let pos = this.crontab.indexOf(target)
 
 		if (pos >= 0)
 			this.crontab.splice(pos, 1)
@@ -68,15 +73,16 @@ module.exports = class Cron {
 	once (interval, what, ...args) {
 		let self = this
 		let record = { interval, args }
+		let weakref = new WeakRef(record)
 
 		record.what = async function (...internal) {
 			await what(...internal)
-			self.off(record)
+			self.off(weakref)
 		}
 
 		this.crontab.push(record)
 
-		return record
+		return weakref
 	}
 
 	start () {
