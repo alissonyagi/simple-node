@@ -174,6 +174,19 @@ window.Database = function () {
 		this.tables[name].__last = 0
 	}
 
+	main.prototype.purge = function () {
+		if (this.tables.length === 0)
+			return
+
+		var self = this
+
+		Object.keys(this.tables).forEach(function (v) {
+			self.drop(v)
+		})
+
+		this.commit()
+	}
+
 	main.Table = function (columns) {
 		this.__cols = columns
 		this.__data = {}
