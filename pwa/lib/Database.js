@@ -183,8 +183,6 @@ window.Database = function () {
 		Object.keys(this.tables).forEach(function (v) {
 			self.drop(v)
 		})
-
-		this.commit()
 	}
 
 	main.Table = function (columns) {
