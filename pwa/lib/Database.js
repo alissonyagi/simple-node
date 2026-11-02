@@ -654,11 +654,6 @@ window.Database = function () {
 				idb.createObjectStore(storeName, { keyPath: 'name' })
 		}
 
-		instance.onversionchange = function () {
-			instance = null
-			main.warning('database-version-changed')
-		}
-
 		db.commit = function () {
 			if (!instance || !instance.result || !instance.result.transaction)
 				main.error('invalid-instance')
@@ -771,6 +766,12 @@ window.Database = function () {
 		return new Promise(function (resolve, reject) {
 			instance.onsuccess = function (evt) {
 				var idb = evt.target.result
+
+				idb.onversionchange = function () {
+					idb.close()
+					main.warning('database-version-changed')
+				}
+
 				var transaction = idb.transaction([storeName], 'readonly')
 
 				var tablesReq = transaction.objectStore(storeName).getAll()
