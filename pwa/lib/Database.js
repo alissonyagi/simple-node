@@ -417,9 +417,10 @@ window.Database = function () {
 			}
 		}
 
-		var target = first ? Object.keys(this.__data) : set
+		if (first)
+			set = new Set(Object.keys(this.__data))
 
-		for (var id of target) {
+		for (var id of set) {
 			var row = this.__data[id]
 
 			for (var col in normalized) {
