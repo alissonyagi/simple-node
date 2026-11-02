@@ -185,6 +185,40 @@ window.Database = function () {
 		})
 	}
 
+	main.__dataset = Object.create(null)
+
+	main.__dataset.group = function (cols) {
+		var rows = this
+		var table = this.__table
+
+		if (!(cols instanceof Array) || cols.length === 0)
+			return rows
+
+		var valid = cols.filter(function (col) {
+			return table.__cols.indexOf(col) !== -1
+		})
+
+		var ret = {}
+
+		rows.forEach(function (row) {
+			var cur = ret
+
+			for (var i = 0; i < valid.length; i++) {
+				var col = row[valid[i]]
+
+				if (!cur[col])
+					cur[col] = i === valid.length - 1 ? [] : {}
+
+				cur = cur[col]
+			}
+
+			if (cur instanceof Array)
+				cur.push(row)
+		})
+
+		return ret
+	}
+
 	main.Table = function (columns) {
 		this.__cols = columns
 		this.__data = {}
@@ -215,6 +249,27 @@ window.Database = function () {
 		this.__idx = obj.__idx
 		this.__last = obj.__last
 		this.__isDropped = false
+	}
+
+	main.Table.prototype.__dataset = function () {
+		var ret = Array.prototype.slice.call(arguments)
+
+		Object.defineProperty(ret, '__table', {
+			configurable: false,
+			enumerable: false,
+			value: this,
+			writable: false
+		})
+
+		for (var method in main.__dataset)
+			Object.defineProperty(ret, method, {
+				configurable: false,
+				enumerable: false,
+				value: main.__dataset[method],
+				writable: false
+			})
+
+		return ret
 	}
 
 	main.Table.prototype.__indexRow = function (id, column) {
@@ -499,7 +554,7 @@ window.Database = function () {
 
 	main.Table.prototype.select = function (filter) {
 		var rows = this.__query(filter)
-		var ret = []
+		var ret = this.__dataset()
 
 		for (var i = 0; i < rows.length; i++) {
 			var row = this.__rowObject(this.__data[rows[i]])
