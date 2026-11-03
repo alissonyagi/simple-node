@@ -127,10 +127,7 @@ window.Database = function () {
 		return ret
 	}
 
-	main.create = function (name, columns) {
-		if (!main.config.regexp.test(name))
-			main.error('invalid-table-name')
-
+	main.create = function (columns) {
 		if (!(columns instanceof Array))
 			main.error('invalid-columns')
 
