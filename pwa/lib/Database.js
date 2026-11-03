@@ -127,11 +127,35 @@ window.Database = function () {
 		return ret
 	}
 
+	main.create = function (name, columns) {
+		if (!main.config.regexp.test(name))
+			main.error('invalid-table-name')
+
+		if (!(columns instanceof Array))
+			main.error('invalid-columns')
+
+		var colNames = []
+
+		for (var i = 0; i < columns.length; i++) {
+			var colName = columns[i]
+
+			if (!main.config.regexp.test(colName))
+				main.error('invalid-column-name')
+
+			if (colNames.indexOf(colName) !== -1)
+				main.error('duplicate-column')
+
+			colNames.push(colName)
+		}
+
+		return new main.Table(columns)
+	}
+
 	main.prototype.get = function (name) {
 		return this.tables[name]
 	}
 
-	main.prototype.create = function (name, columns, temporary) {
+	main.prototype.create = function (name, columns) {
 		if (!main.config.regexp.test(name))
 			main.error('invalid-table-name')
 
@@ -154,9 +178,6 @@ window.Database = function () {
 
 			colNames.push(colName)
 		}
-
-		if (temporary === true)
-			return new main.Table(columns)
 
 		this.tables[name] = new main.Table(columns)
 
