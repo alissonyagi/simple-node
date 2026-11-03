@@ -131,7 +131,7 @@ window.Database = function () {
 		return this.tables[name]
 	}
 
-	main.prototype.create = function (name, columns) {
+	main.prototype.create = function (name, columns, temporary) {
 		if (!main.config.regexp.test(name))
 			main.error('invalid-table-name')
 
@@ -154,6 +154,9 @@ window.Database = function () {
 
 			colNames.push(colName)
 		}
+
+		if (temporary === true)
+			return new main.Table(columns)
 
 		this.tables[name] = new main.Table(columns)
 
