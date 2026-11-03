@@ -110,21 +110,7 @@ window.Database = function () {
 		if (typeof obj !== 'object' || obj === null)
 			return obj
 
-		if (obj instanceof Array) {
-			var arrayRet = []
-
-			for (var i = 0; i < obj.length; i++)
-				arrayRet.push(main.clone(obj[i]))
-
-			return arrayRet
-		}
-
-		var ret = {}
-
-		for (var p in obj)
-			ret[p] = main.clone(obj[p])
-
-		return ret
+		return JSON.parse(JSON.stringify(obj))
 	}
 
 	main.create = function (columns) {
