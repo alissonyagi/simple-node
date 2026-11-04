@@ -223,11 +223,12 @@ window.Database = function () {
 
 			for (var i = 0; i < valid.length; i++) {
 				var col = row[valid[i]]
+				var idx = typeof col === 'object' ? JSON.stringif(col) : col
 
-				if (!cur[col])
-					cur[col] = i === valid.length - 1 ? [] : {}
+				if (!cur[idx])
+					cur[idx] = i === valid.length - 1 ? [] : {}
 
-				cur = cur[col]
+				cur = cur[idx]
 			}
 
 			if (cur instanceof Array)
